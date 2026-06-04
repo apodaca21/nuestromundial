@@ -117,8 +117,12 @@ export const StickerCard = forwardRef<HTMLDivElement, StickerCardProps>(
       <div
         ref={setCardRef}
         data-sticker-export
-        className="@container relative mx-auto w-full max-w-[min(100%,320px)] overflow-hidden bg-white shadow-[0_6px_28px_rgba(0,0,0,0.22)] sm:max-w-[300px]"
-        style={{ aspectRatio: '2.5 / 3.5', containerType: 'inline-size' }}
+        className="relative mx-auto w-full max-w-[min(100%,320px)] overflow-hidden sm:max-w-[300px]"
+        style={{
+          aspectRatio: '2.5 / 3.5',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 6px 28px rgba(0,0,0,0.22)',
+        }}
       >
         <img
           src={country.templateSrc}
@@ -153,7 +157,8 @@ export const StickerCard = forwardRef<HTMLDivElement, StickerCardProps>(
               <img
                 src={photoUrl}
                 alt=""
-                className="max-h-full w-auto max-w-full select-none object-contain object-bottom drop-shadow-[0_6px_14px_rgba(0,0,0,0.4)]"
+                className="max-h-full w-auto max-w-full select-none object-contain object-bottom"
+                style={{ filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.4))' }}
                 draggable={false}
               />
             </div>
@@ -169,10 +174,11 @@ export const StickerCard = forwardRef<HTMLDivElement, StickerCardProps>(
         {/* Nombre — solo barra superior de la plantilla */}
         <TextOnBar layout={nameLayout}>
           <p
-            className="w-full text-center font-display font-black uppercase leading-[0.9] tracking-[0.03em] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
+            className="w-full text-center font-display font-black uppercase leading-[0.9] tracking-[0.03em]"
             style={{
               fontSize: nameFontSize,
               color: nameLayout.color,
+              textShadow: '0 2px 4px rgba(0,0,0,0.9)',
             }}
           >
             {displayName}

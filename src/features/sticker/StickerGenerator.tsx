@@ -3,6 +3,10 @@ import { Camera, Download, Images, Loader2 } from 'lucide-react'
 import { ApoWatermark } from '../../components/ApoWatermark'
 import { pageX } from '../../lib/layout'
 import { CountryFlagBadge } from './components/CountryFlagBadge'
+import {
+  PhotoProcessingBar,
+  PhotoProcessingOverlay,
+} from './components/PhotoProcessingBar'
 import { PhotoAdjustControls } from './components/PhotoAdjustControls'
 import { StickerCard } from './components/StickerCard'
 import { downloadStickerCard } from './exportSticker'
@@ -17,6 +21,7 @@ import {
   type StickerCountryId,
 } from './stickerCountries'
 import { handleImageUpload, preloadStickerBackgroundModel } from './stickerPhoto'
+import type { StickerPhotoProgress } from './stickerPhoto'
 
 export function StickerGenerator() {
   const cardRef = useRef<HTMLDivElement>(null)
@@ -30,7 +35,8 @@ export function StickerGenerator() {
   const [photoTransform, setPhotoTransform] =
     useState<PhotoTransform>(DEFAULT_PHOTO_TRANSFORM)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [processingLabel, setProcessingLabel] = useState('')
+  const [processingProgress, setProcessingProgress] =
+    useState<StickerPhotoProgress | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -61,16 +67,26 @@ export function StickerGenerator() {
     if (!file) return
     setUploadError(null)
     setIsProcessing(true)
-    setProcessingLabel('Cargando IA...')
+    setProcessingProgress({ percent: 0, label: 'Iniciando…' })
+
+    const immediatePreview = URL.createObjectURL(file)
+    setPhotoUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return immediatePreview
+    })
+    setPhotoTransform(DEFAULT_PHOTO_TRANSFORM)
 
     try {
-      const cutout = await handleImageUpload(file, setProcessingLabel)
+      const cutout = await handleImageUpload(file, setProcessingProgress)
       setPhotoUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev)
+        if (prev && prev !== cutout) URL.revokeObjectURL(prev)
         return cutout
       })
-      setPhotoTransform(DEFAULT_PHOTO_TRANSFORM)
     } catch (err) {
+      setPhotoUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return null
+      })
       const msg =
         err instanceof Error
           ? err.message
@@ -79,7 +95,7 @@ export function StickerGenerator() {
       console.error('[StickerGenerator] removeBackground', err)
     } finally {
       setIsProcessing(false)
-      setProcessingLabel('')
+      setProcessingProgress(null)
       if (galleryInputRef.current) galleryInputRef.current.value = ''
       if (cameraInputRef.current) cameraInputRef.current.value = ''
     }
@@ -218,10 +234,13 @@ export function StickerGenerator() {
                   Cámara
                 </button>
               </div>
-              {isProcessing ? (
-                <p className="mt-2 text-center text-xs font-bold text-[#6b00ff]">
-                  {processingLabel || 'Procesando...'}
-                </p>
+              {isProcessing && processingProgress ? (
+                <div className="mt-3">
+                  <PhotoProcessingBar
+                    percent={processingProgress.percent}
+                    label={processingProgress.label}
+                  />
+                </div>
               ) : null}
               {uploadError ? (
                 <p className="mt-2 text-center text-xs font-bold text-red-600">
@@ -235,7 +254,7 @@ export function StickerGenerator() {
               </p>
             </div>
 
-            {photoUrl ? (
+            {photoUrl && !isProcessing ? (
               <PhotoAdjustControls
                 value={photoTransform}
                 onChange={(next) =>
@@ -250,17 +269,25 @@ export function StickerGenerator() {
             <p className="w-full text-center text-[10px] font-black uppercase tracking-widest text-stone-500 sm:text-left lg:text-center">
               Vista previa
             </p>
-            <div className="flex w-full justify-center">
+            <div className="relative w-fit max-w-full">
               <StickerCard
                 ref={cardRef}
                 country={country}
                 name={name}
                 photoUrl={photoUrl}
                 photoTransform={photoTransform}
-                onPhotoTransformChange={(next) =>
-                  setPhotoTransform(clampPhotoTransform(next))
+                onPhotoTransformChange={
+                  isProcessing
+                    ? undefined
+                    : (next) => setPhotoTransform(clampPhotoTransform(next))
                 }
               />
+              {isProcessing && processingProgress ? (
+                <PhotoProcessingOverlay
+                  percent={processingProgress.percent}
+                  label={processingProgress.label}
+                />
+              ) : null}
             </div>
 
             <button

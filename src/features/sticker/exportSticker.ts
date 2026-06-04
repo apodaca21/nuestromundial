@@ -61,16 +61,113 @@ function exportScale(): number {
   return isMobile ? 2 : Math.min(3, window.devicePixelRatio || 2)
 }
 
-function copyComputedFontSizes(source: HTMLElement, clone: HTMLElement): void {
-  const sourceTexts = source.querySelectorAll('p')
-  const cloneTexts = clone.querySelectorAll('p')
-  sourceTexts.forEach((node, index) => {
-    const target = cloneTexts[index] as HTMLElement | undefined
-    if (!target) return
-    const { fontSize, lineHeight, letterSpacing } = window.getComputedStyle(node)
-    target.style.fontSize = fontSize
-    target.style.lineHeight = lineHeight
-    target.style.letterSpacing = letterSpacing
+/** Propiedades visuales que html2canvas necesita sin leer Tailwind (oklch). */
+const EXPORT_STYLE_PROPS = [
+  'display',
+  'position',
+  'top',
+  'right',
+  'bottom',
+  'left',
+  'z-index',
+  'width',
+  'height',
+  'max-width',
+  'max-height',
+  'min-width',
+  'min-height',
+  'margin',
+  'padding',
+  'box-sizing',
+  'overflow',
+  'overflow-x',
+  'overflow-y',
+  'flex-direction',
+  'align-items',
+  'justify-content',
+  'flex',
+  'flex-shrink',
+  'flex-grow',
+  'gap',
+  'transform',
+  'transform-origin',
+  'opacity',
+  'visibility',
+  'color',
+  'background-color',
+  'background-image',
+  'background-size',
+  'background-position',
+  'background-repeat',
+  'font-family',
+  'font-size',
+  'font-weight',
+  'font-style',
+  'line-height',
+  'letter-spacing',
+  'text-align',
+  'text-transform',
+  'text-shadow',
+  'white-space',
+  'box-shadow',
+  'filter',
+  'border',
+  'border-radius',
+  'border-top',
+  'border-right',
+  'border-bottom',
+  'border-left',
+  'border-color',
+  'border-width',
+  'border-style',
+  'object-fit',
+  'object-position',
+  'aspect-ratio',
+] as const
+
+function isSafeCSSValue(value: string): boolean {
+  if (!value || value === 'none' || value === 'auto' || value === 'normal') return false
+  if (/oklch|oklab|color-mix|lch\(/i.test(value)) return false
+  return true
+}
+
+function copyExportStyles(source: Element, target: HTMLElement): void {
+  const computed = window.getComputedStyle(source)
+  for (const prop of EXPORT_STYLE_PROPS) {
+    const value = computed.getPropertyValue(prop).trim()
+    if (!isSafeCSSValue(value)) continue
+    target.style.setProperty(prop, value, computed.getPropertyPriority(prop))
+  }
+}
+
+function walkElementPairs(
+  source: Element,
+  clone: Element,
+  visit: (sourceEl: Element, cloneEl: HTMLElement) => void,
+): void {
+  if (clone instanceof HTMLElement) visit(source, clone)
+  const sourceChildren = [...source.children]
+  const cloneChildren = [...clone.children]
+  for (let i = 0; i < sourceChildren.length; i++) {
+    const cloneChild = cloneChildren[i]
+    if (cloneChild) walkElementPairs(sourceChildren[i], cloneChild, visit)
+  }
+}
+
+/** html2canvas no soporta oklch (Tailwind v4): quitamos CSS y usamos estilos calculados en rgb. */
+function prepareCloneForExport(
+  sourceRoot: HTMLElement,
+  cloneRoot: HTMLElement,
+  doc: Document,
+): void {
+  doc.querySelectorAll('link[rel="stylesheet"], style').forEach((node) => node.remove())
+
+  cloneRoot.removeAttribute('class')
+  cloneRoot.style.containerType = 'normal'
+
+  walkElementPairs(sourceRoot, cloneRoot, (sourceEl, cloneEl) => {
+    cloneEl.removeAttribute('class')
+    copyExportStyles(sourceEl, cloneEl)
   })
 }
 
@@ -123,9 +220,8 @@ export async function downloadStickerCard(
       backgroundColor: '#ffffff',
       logging: false,
       imageTimeout: 15000,
-      onclone: (_doc, clonedElement) => {
-        clonedElement.style.containerType = 'normal'
-        copyComputedFontSizes(element, clonedElement)
+      onclone: (doc, clonedElement) => {
+        prepareCloneForExport(element, clonedElement, doc)
       },
     })
 
