@@ -1,6 +1,12 @@
 /** Zona horaria para mostrar partidos en la app (Pacífico / Tijuana). */
 export const APP_DISPLAY_TIMEZONE = 'America/Tijuana'
 
+export const APP_TIME_LABEL = 'hora Tijuana'
+
+export function formatMatchKickoffLabel(isoDate: string): string {
+  return `${formatMatchDateTime(isoDate)} · ${APP_TIME_LABEL}`
+}
+
 export function formatMatchDateTime(
   isoDate: string,
   timeZone = APP_DISPLAY_TIMEZONE,

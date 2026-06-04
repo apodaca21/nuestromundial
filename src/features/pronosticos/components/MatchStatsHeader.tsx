@@ -1,6 +1,6 @@
 import { TeamFlag } from '../../../components/ui/TeamFlag'
 import { MatchEventMeta } from './MatchEventMeta'
-import { formatMatchDateTime } from '../../../lib/format'
+import { formatMatchKickoffLabel } from '../../../lib/format'
 import { sportCard } from '../../../lib/styles'
 import { getTeamColors } from '../../../lib/teamVisuals'
 import type { Match } from '../../../types/match'
@@ -72,7 +72,7 @@ export function MatchStatsHeader({ match }: MatchStatsHeaderProps) {
       </div>
 
       <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-widest text-stone-500">
-        {formatMatchDateTime(kickoffAt)} · hora Tijuana
+        {formatMatchKickoffLabel(kickoffAt)}
       </p>
     </section>
   )

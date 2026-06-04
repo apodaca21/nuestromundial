@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useMatchOdds } from '../../hooks/useMatchOdds'
 import { useScheduleTick } from '../../hooks/useScheduleTick'
 import { useStoreSubscription } from '../../hooks/useStoreSubscription'
-import { formatMatchDateTime } from '../../lib/format'
+import { formatMatchKickoffLabel } from '../../lib/format'
 import { canViewPronosticos, getMatchById } from '../../lib/schedule'
 import {
   getTournamentRevision,
@@ -61,8 +61,8 @@ export function MatchDetailScreen({ matchId, onBack }: MatchDetailScreenProps) {
                 {match.homeLabel ?? match.homeTeam?.name} vs{' '}
                 {match.awayLabel ?? match.awayTeam?.name}
               </h2>
-              <p className="mt-2 text-sm text-stone-500">
-                {formatMatchDateTime(match.kickoffAt)}
+              <p className="mt-2 text-sm font-bold uppercase tracking-wide text-stone-500">
+                {formatMatchKickoffLabel(match.kickoffAt)}
               </p>
               <p className="mt-1 text-xs text-stone-400">
                 {match.venue}
