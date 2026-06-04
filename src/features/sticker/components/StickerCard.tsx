@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useCallback, useRef } from 'react'
 import type { StickerCountry, StickerTextBlockLayout } from '../stickerCountries'
 import type { PhotoTransform } from '../photoTransform'
 import { clampPhotoTransform } from '../photoTransform'
@@ -54,7 +54,15 @@ export const StickerCard = forwardRef<HTMLDivElement, StickerCardProps>(
     const displayName = name.trim() || 'TU NOMBRE'
     const { photo, name: nameLayout, watermarkApo, watermarkDomain } = country
     const cardRef = useRef<HTMLDivElement>(null)
-    useImperativeHandle(ref, () => cardRef.current as HTMLDivElement)
+
+    const setCardRef = useCallback(
+      (node: HTMLDivElement | null) => {
+        cardRef.current = node
+        if (typeof ref === 'function') ref(node)
+        else if (ref) ref.current = node
+      },
+      [ref],
+    )
 
     const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(
       null,
@@ -107,7 +115,8 @@ export const StickerCard = forwardRef<HTMLDivElement, StickerCardProps>(
 
     return (
       <div
-        ref={cardRef}
+        ref={setCardRef}
+        data-sticker-export
         className="@container relative mx-auto w-full max-w-[min(100%,320px)] overflow-hidden bg-white shadow-[0_6px_28px_rgba(0,0,0,0.22)] sm:max-w-[300px]"
         style={{ aspectRatio: '2.5 / 3.5', containerType: 'inline-size' }}
       >
@@ -116,6 +125,7 @@ export const StickerCard = forwardRef<HTMLDivElement, StickerCardProps>(
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
           draggable={false}
+          crossOrigin="anonymous"
         />
 
         <div

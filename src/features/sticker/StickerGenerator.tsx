@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Download, ImagePlus, Loader2, Sparkles } from 'lucide-react'
+import { Camera, Download, Images, Loader2, Sparkles } from 'lucide-react'
 import { ApoWatermark } from '../../components/ApoWatermark'
 import { pageX } from '../../lib/layout'
 import { CountryFlagBadge } from './components/CountryFlagBadge'
@@ -16,11 +16,13 @@ import {
   STICKER_COUNTRIES,
   type StickerCountryId,
 } from './stickerCountries'
-import { handleImageUpload } from './stickerPhoto'
+import { handleImageUpload, preloadStickerBackgroundModel } from './stickerPhoto'
 
 export function StickerGenerator() {
   const cardRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const [modelReady, setModelReady] = useState(false)
 
   const [countryId, setCountryId] = useState<StickerCountryId>('mex')
   const [name, setName] = useState('')
@@ -40,6 +42,20 @@ export function StickerGenerator() {
       if (photoUrl) URL.revokeObjectURL(photoUrl)
     }
   }, [photoUrl])
+
+  useEffect(() => {
+    let cancelled = false
+    preloadStickerBackgroundModel()
+      .then(() => {
+        if (!cancelled) setModelReady(true)
+      })
+      .catch(() => {
+        if (!cancelled) setModelReady(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const onPhotoSelected = useCallback(async (file: File | undefined) => {
     if (!file) return
@@ -64,7 +80,8 @@ export function StickerGenerator() {
     } finally {
       setIsProcessing(false)
       setProcessingLabel('')
-      if (fileInputRef.current) fileInputRef.current.value = ''
+      if (galleryInputRef.current) galleryInputRef.current.value = ''
+      if (cameraInputRef.current) cameraInputRef.current.value = ''
     }
   }, [])
 
@@ -81,8 +98,13 @@ export function StickerGenerator() {
     try {
       const slug = name.trim().replace(/\s+/g, '-').toLowerCase() || 'fan'
       await downloadStickerCard(el, `estampa-${slug}-nuestromundial.png`)
-    } catch {
-      setExportError('No se pudo generar la imagen. Intenta de nuevo.')
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'No se pudo generar la imagen. Intenta de nuevo.'
+      setExportError(msg)
+      console.error('[StickerGenerator] download', err)
     } finally {
       setIsExporting(false)
     }
@@ -160,39 +182,60 @@ export function StickerGenerator() {
                 Tu foto
               </span>
               <input
-                ref={fileInputRef}
+                ref={galleryInputRef}
                 type="file"
-                accept="image/*"
-                capture="user"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*"
                 className="sr-only"
                 disabled={isProcessing}
                 onChange={(e) => onPhotoSelected(e.target.files?.[0])}
               />
-              <button
-                type="button"
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="sr-only"
                 disabled={isProcessing}
-                onClick={() => fileInputRef.current?.click()}
-                className="mt-1 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#6b00ff]/35 bg-[#6b00ff]/5 px-4 py-3 text-sm font-black uppercase tracking-wide text-[#6b00ff] transition active:scale-[0.98] disabled:opacity-60"
-              >
-                {isProcessing ? (
-                  <>
+                onChange={(e) => onPhotoSelected(e.target.files?.[0])}
+              />
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-[#6b00ff]/35 bg-[#6b00ff]/5 px-2 py-2.5 text-[11px] font-black uppercase tracking-wide text-[#6b00ff] transition active:scale-[0.98] disabled:opacity-60"
+                >
+                  {isProcessing ? (
                     <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                    {processingLabel || 'Cargando IA...'}
-                  </>
-                ) : (
-                  <>
-                    <ImagePlus className="h-5 w-5" aria-hidden />
-                    Subir foto
-                  </>
-                )}
-              </button>
+                  ) : (
+                    <Images className="h-5 w-5" aria-hidden />
+                  )}
+                  Galería
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl border-2 border-stone-200 bg-stone-50 px-2 py-2.5 text-[11px] font-black uppercase tracking-wide text-stone-600 transition active:scale-[0.98] disabled:opacity-60"
+                >
+                  <Camera className="h-5 w-5" aria-hidden />
+                  Cámara
+                </button>
+              </div>
+              {isProcessing ? (
+                <p className="mt-2 text-center text-xs font-bold text-[#6b00ff]">
+                  {processingLabel || 'Procesando...'}
+                </p>
+              ) : null}
               {uploadError ? (
                 <p className="mt-2 text-center text-xs font-bold text-red-600">
                   {uploadError}
                 </p>
               ) : null}
-              <p className="mt-2 text-center text-[10px] text-stone-400">
-                La IA quita el fondo en tu dispositivo (sin subir a servidor)
+              <p className="mt-2 text-center text-[10px] leading-snug text-stone-400">
+                {modelReady
+                  ? 'IA lista. En iPhone usa Galería; el fondo se quita en tu teléfono.'
+                  : 'La 1ª vez descarga la IA (~40 MB, Wi‑Fi). Luego es más rápido.'}
               </p>
             </div>
 
@@ -242,6 +285,9 @@ export function StickerGenerator() {
                 </>
               )}
             </button>
+            <p className="max-w-[300px] text-center text-[10px] leading-snug text-stone-400">
+              En iPhone usa «Compartir» → «Guardar imagen» si no se descarga solo.
+            </p>
             {exportError ? (
               <p className="text-center text-xs font-bold text-red-600">
                 {exportError}

@@ -1,12 +1,58 @@
 import type { Config } from '@imgly/background-removal'
 
 const MAX_FILE_BYTES = 12 * 1024 * 1024
-const MAX_EDGE_PX = 1024
 
 const BG_REMOVAL_CONFIG: Config = {
   model: 'isnet_quint8',
   device: 'cpu',
-  output: { format: 'image/png', quality: 0.9 },
+  output: { format: 'image/png', quality: 0.85 },
+}
+
+function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  if (/iPhone|iPad|iPod|Android/i.test(ua)) return true
+  return navigator.maxTouchPoints > 1 && window.innerWidth < 1024
+}
+
+function maxEdgeForDevice(): number {
+  return isMobileDevice() ? 640 : 1024
+}
+
+type RemoveBackgroundFn = (
+  image: Parameters<
+    Awaited<typeof import('@imgly/background-removal')>['removeBackground']
+  >[0],
+  config?: Config,
+) => Promise<Blob>
+
+let removeBackgroundFn: RemoveBackgroundFn | null = null
+let preloadPromise: Promise<void> | null = null
+
+async function getRemoveBackground(): Promise<RemoveBackgroundFn> {
+  if (!removeBackgroundFn) {
+    const { removeBackground } = await import('@imgly/background-removal')
+    removeBackgroundFn = removeBackground
+  }
+  return removeBackgroundFn
+}
+
+/** Descarga el modelo WASM en segundo plano (llamar al abrir Mi Estampa). */
+export function preloadStickerBackgroundModel(
+  onProgress?: (message: string) => void,
+): Promise<void> {
+  if (!preloadPromise) {
+    preloadPromise = (async () => {
+      onProgress?.('Preparando IA en segundo plano...')
+      const { preload } = await import('@imgly/background-removal')
+      await preload(BG_REMOVAL_CONFIG)
+      await getRemoveBackground()
+    })().catch((err) => {
+      preloadPromise = null
+      throw err
+    })
+  }
+  return preloadPromise
 }
 
 export function validateStickerPhoto(file: File): string | null {
@@ -19,11 +65,11 @@ export function validateStickerPhoto(file: File): string | null {
   return null
 }
 
-/** Reduce tamaño para evitar crash por memoria en móvil. */
 async function resizePhotoForAI(file: File): Promise<Blob> {
+  const maxEdge = maxEdgeForDevice()
   const bitmap = await createImageBitmap(file)
   const longest = Math.max(bitmap.width, bitmap.height)
-  const scale = longest > MAX_EDGE_PX ? MAX_EDGE_PX / longest : 1
+  const scale = longest > maxEdge ? maxEdge / longest : 1
   const width = Math.max(1, Math.round(bitmap.width * scale))
   const height = Math.max(1, Math.round(bitmap.height * scale))
 
@@ -39,13 +85,12 @@ async function resizePhotoForAI(file: File): Promise<Blob> {
   bitmap.close()
 
   const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, 'image/jpeg', 0.9),
+    canvas.toBlob(resolve, 'image/jpeg', 0.82),
   )
   if (!blob) throw new Error('No se pudo comprimir la imagen')
   return blob
 }
 
-/** Quita el fondo en el cliente (WASM) y devuelve URL del PNG recortado. */
 export async function removeStickerBackground(
   file: File,
   onProgress?: (message: string) => void,
@@ -53,20 +98,24 @@ export async function removeStickerBackground(
   const validationError = validateStickerPhoto(file)
   if (validationError) throw new Error(validationError)
 
+  await preloadStickerBackgroundModel(onProgress).catch(() => {
+    /* si falla preload, removeBackground intentará cargar igual */
+  })
+
   onProgress?.('Preparando foto...')
   const resized = await resizePhotoForAI(file)
 
-  onProgress?.('Descargando IA (solo la 1ª vez)...')
-  const { removeBackground } = await import('@imgly/background-removal')
+  onProgress?.('Quitando fondo...')
+  const removeBackground = await getRemoveBackground()
   const sourceUrl = URL.createObjectURL(resized)
 
   try {
     const blob = await removeBackground(sourceUrl, {
       ...BG_REMOVAL_CONFIG,
-      progress: (key, current, total) => {
+      progress: (_key, current, total) => {
         if (total > 0) {
           const pct = Math.round((current / total) * 100)
-          onProgress?.(`IA: ${key} ${pct}%`)
+          onProgress?.(`IA ${pct}%`)
         }
       },
     })
@@ -80,7 +129,6 @@ export async function handleImageUpload(
   file: File,
   onProgress?: (message: string) => void,
 ): Promise<string> {
-  onProgress?.('Cargando IA...')
   const cutoutUrl = await removeStickerBackground(file, onProgress)
   onProgress?.('Listo')
   return cutoutUrl
