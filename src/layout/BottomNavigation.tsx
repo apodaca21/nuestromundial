@@ -17,7 +17,10 @@ const publicTabs: { id: AppTab; label: string; icon: LucideIcon }[] = [
 
 const adminTab = { id: 'admin' as const, label: 'Admin', icon: Settings }
 
-function NavTab({
+type TabItem = (typeof publicTabs)[number] | typeof adminTab
+
+/** Móvil: pastilla morada activa */
+function NavTabMobile({
   label,
   icon: Icon,
   isActive,
@@ -33,27 +36,25 @@ function NavTab({
       type="button"
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
-      className={`flex min-h-[3.5rem] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 transition-all duration-200 active:scale-[0.97] sm:min-h-[4rem] sm:gap-1.5 sm:px-2 sm:py-2.5 ${
+      className={`flex min-h-[3.5rem] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 transition-all duration-200 active:scale-[0.97] ${
         isActive
           ? 'bg-[#6b00ff] text-white shadow-lg shadow-[#6b00ff]/30'
-          : 'text-stone-500 hover:bg-stone-100/90'
+          : 'text-stone-500 active:bg-stone-100'
       }`}
     >
       <span
-        className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors sm:h-10 sm:w-10 ${
+        className={`flex h-9 w-9 items-center justify-center rounded-xl ${
           isActive ? 'bg-white/15' : 'bg-stone-200/70'
         }`}
       >
         <Icon
-          className={`h-[1.35rem] w-[1.35rem] sm:h-6 sm:w-6 ${
-            isActive ? 'text-white' : 'text-stone-600'
-          }`}
+          className={`h-[1.35rem] w-[1.35rem] ${isActive ? 'text-white' : 'text-stone-600'}`}
           strokeWidth={isActive ? 2.5 : 2}
           aria-hidden
         />
       </span>
       <span
-        className={`max-w-full truncate text-[9px] font-bold uppercase leading-none tracking-wide sm:text-[10px] ${
+        className={`max-w-full truncate text-[9px] font-bold uppercase leading-none tracking-wide ${
           isActive ? 'text-white' : 'text-stone-500'
         }`}
       >
@@ -61,6 +62,55 @@ function NavTab({
       </span>
     </button>
   )
+}
+
+/** PC: estilo clásico (línea arriba + icono) */
+function NavTabDesktop({
+  label,
+  icon: Icon,
+  isActive,
+  onClick,
+}: {
+  label: string
+  icon: LucideIcon
+  isActive: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={isActive ? 'page' : undefined}
+      className={`relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 transition-colors ${
+        isActive ? 'text-[#6b00ff]' : 'text-stone-400 hover:text-stone-600'
+      }`}
+    >
+      {isActive && (
+        <span className="absolute top-0 left-1/2 h-0.5 w-10 -translate-x-1/2 rounded-full bg-[#6b00ff]" />
+      )}
+      <Icon className="h-5 w-5 shrink-0" aria-hidden />
+      <span className="max-w-full truncate text-[9px] font-black uppercase tracking-tight">
+        {label}
+      </span>
+    </button>
+  )
+}
+
+function renderTabs(
+  tabs: TabItem[],
+  activeTab: AppTab,
+  onTabChange: (tab: AppTab) => void,
+  Variant: typeof NavTabMobile,
+) {
+  return tabs.map(({ id, label, icon }) => (
+    <Variant
+      key={id}
+      label={label}
+      icon={icon}
+      isActive={activeTab === id}
+      onClick={() => onTabChange(id)}
+    />
+  ))
 }
 
 export function BottomNavigation({
@@ -72,19 +122,17 @@ export function BottomNavigation({
 
   return (
     <nav
-      className={`${navBar} shadow-[0_-6px_20px_rgba(15,15,15,0.06)]`}
+      className={`${navBar} shadow-[0_-6px_20px_rgba(15,15,15,0.06)] sm:shadow-none`}
       aria-label="Navegación principal"
     >
-      <div className={`${navInner} gap-1.5 px-2.5 pt-2 sm:gap-2 sm:px-4 sm:pt-2.5`}>
-        {tabs.map(({ id, label, icon }) => (
-          <NavTab
-            key={id}
-            label={label}
-            icon={icon}
-            isActive={activeTab === id}
-            onClick={() => onTabChange(id)}
-          />
-        ))}
+      {/* Móvil */}
+      <div className={`${navInner} gap-1.5 px-2.5 pt-2 sm:hidden`}>
+        {renderTabs(tabs, activeTab, onTabChange, NavTabMobile)}
+      </div>
+
+      {/* PC / tablet */}
+      <div className={`${navInner} hidden sm:flex`}>
+        {renderTabs(tabs, activeTab, onTabChange, NavTabDesktop)}
       </div>
     </nav>
   )

@@ -11,7 +11,7 @@ export const appShell = [
 /** Espacio inferior = barra de tabs + home indicator iPhone */
 export const appMain = [
   'min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain',
-  'pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))]',
+  'pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]',
 ].join(' ')
 
 export const pageX = 'px-4 sm:px-5 md:px-6'
