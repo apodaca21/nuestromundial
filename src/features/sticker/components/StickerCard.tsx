@@ -127,9 +127,9 @@ export const StickerCard = forwardRef<HTMLDivElement, StickerCardProps>(
         <img
           src={country.templateSrc}
           alt=""
+          data-sticker-template
           className="absolute inset-0 h-full w-full object-cover"
           draggable={false}
-          crossOrigin="anonymous"
         />
 
         <div
@@ -157,6 +157,7 @@ export const StickerCard = forwardRef<HTMLDivElement, StickerCardProps>(
               <img
                 src={photoUrl}
                 alt=""
+                data-sticker-photo
                 className="max-h-full w-auto max-w-full select-none object-contain object-bottom"
                 style={{ filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.4))' }}
                 draggable={false}
@@ -174,6 +175,7 @@ export const StickerCard = forwardRef<HTMLDivElement, StickerCardProps>(
         {/* Nombre — solo barra superior de la plantilla */}
         <TextOnBar layout={nameLayout}>
           <p
+            data-sticker-text
             className="w-full text-center font-display font-black uppercase leading-[0.9] tracking-[0.03em]"
             style={{
               fontSize: nameFontSize,
@@ -188,6 +190,7 @@ export const StickerCard = forwardRef<HTMLDivElement, StickerCardProps>(
         {/* @apo.webs — franja entre barras */}
         <TextOnBar layout={watermarkApo} className="z-[21]">
           <p
+            data-sticker-text
             className="w-full text-center font-bold uppercase leading-none tracking-[0.12em]"
             style={{
               fontSize: watermarkApo.fontSize,
@@ -203,6 +206,7 @@ export const StickerCard = forwardRef<HTMLDivElement, StickerCardProps>(
         {/* nuestromundial.com — barra inferior */}
         <TextOnBar layout={watermarkDomain} className="z-[21]">
           <p
+            data-sticker-text
             className="w-full text-center font-bold uppercase leading-none tracking-[0.06em]"
             style={{
               fontSize: watermarkDomain.fontSize,

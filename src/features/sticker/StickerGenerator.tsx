@@ -269,25 +269,27 @@ export function StickerGenerator() {
             <p className="w-full text-center text-[10px] font-black uppercase tracking-widest text-stone-500 sm:text-left lg:text-center">
               Vista previa
             </p>
-            <div className="relative w-fit max-w-full">
-              <StickerCard
-                ref={cardRef}
-                country={country}
-                name={name}
-                photoUrl={photoUrl}
-                photoTransform={photoTransform}
-                onPhotoTransformChange={
-                  isProcessing
-                    ? undefined
-                    : (next) => setPhotoTransform(clampPhotoTransform(next))
-                }
-              />
-              {isProcessing && processingProgress ? (
-                <PhotoProcessingOverlay
-                  percent={processingProgress.percent}
-                  label={processingProgress.label}
+            <div className="flex w-full justify-center">
+              <div className="relative w-full max-w-[min(100%,320px)] sm:max-w-[300px]">
+                <StickerCard
+                  ref={cardRef}
+                  country={country}
+                  name={name}
+                  photoUrl={photoUrl}
+                  photoTransform={photoTransform}
+                  onPhotoTransformChange={
+                    isProcessing
+                      ? undefined
+                      : (next) => setPhotoTransform(clampPhotoTransform(next))
+                  }
                 />
-              ) : null}
+                {isProcessing && processingProgress ? (
+                  <PhotoProcessingOverlay
+                    percent={processingProgress.percent}
+                    label={processingProgress.label}
+                  />
+                ) : null}
+              </div>
             </div>
 
             <button

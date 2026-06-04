@@ -1,174 +1,108 @@
-import html2canvas from 'html2canvas'
-
-async function urlToDataUrl(src: string): Promise<string> {
-  if (src.startsWith('data:')) return src
-
-  const response = await fetch(src)
-  if (!response.ok) throw new Error(`No se pudo cargar imagen: ${src}`)
-
-  const blob = await response.blob()
+async function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error('Error leyendo imagen'))
-    reader.readAsDataURL(blob)
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('No se pudo cargar una imagen de la estampa'))
+    img.src = src
   })
-}
-
-/** Convierte imágenes a data URL para exportar sin canvas contaminado. */
-async function inlineImages(root: HTMLElement): Promise<() => void> {
-  const images = [...root.querySelectorAll('img')]
-  const restores: Array<() => void> = []
-
-  await Promise.all(
-    images.map(async (img) => {
-      const original = img.src
-      if (!original) return
-      try {
-        const dataUrl = await urlToDataUrl(original)
-        img.src = dataUrl
-        restores.push(() => {
-          img.src = original
-        })
-      } catch (err) {
-        console.warn('[exportSticker] imagen omitida', original, err)
-      }
-    }),
-  )
-
-  return () => restores.forEach((fn) => fn())
-}
-
-function waitForImages(element: HTMLElement): Promise<void> {
-  const images = [...element.querySelectorAll('img')]
-  return Promise.all(
-    images.map(
-      (img) =>
-        new Promise<void>((resolve) => {
-          if (img.complete && img.naturalWidth > 0) {
-            resolve()
-            return
-          }
-          img.onload = () => resolve()
-          img.onerror = () => resolve()
-        }),
-    ),
-  ).then(() => undefined)
 }
 
 function exportScale(): number {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-  return isMobile ? 2 : Math.min(3, window.devicePixelRatio || 2)
+  return isMobile ? 2 : Math.min(2.5, window.devicePixelRatio || 2)
 }
 
-/** Propiedades visuales que html2canvas necesita sin leer Tailwind (oklch). */
-const EXPORT_STYLE_PROPS = [
-  'display',
-  'position',
-  'top',
-  'right',
-  'bottom',
-  'left',
-  'z-index',
-  'width',
-  'height',
-  'max-width',
-  'max-height',
-  'min-width',
-  'min-height',
-  'margin',
-  'padding',
-  'box-sizing',
-  'overflow',
-  'overflow-x',
-  'overflow-y',
-  'flex-direction',
-  'align-items',
-  'justify-content',
-  'flex',
-  'flex-shrink',
-  'flex-grow',
-  'gap',
-  'transform',
-  'transform-origin',
-  'opacity',
-  'visibility',
-  'color',
-  'background-color',
-  'background-image',
-  'background-size',
-  'background-position',
-  'background-repeat',
-  'font-family',
-  'font-size',
-  'font-weight',
-  'font-style',
-  'line-height',
-  'letter-spacing',
-  'text-align',
-  'text-transform',
-  'text-shadow',
-  'white-space',
-  'box-shadow',
-  'filter',
-  'border',
-  'border-radius',
-  'border-top',
-  'border-right',
-  'border-bottom',
-  'border-left',
-  'border-color',
-  'border-width',
-  'border-style',
-  'object-fit',
-  'object-position',
-  'aspect-ratio',
-] as const
-
-function isSafeCSSValue(value: string): boolean {
-  if (!value || value === 'none' || value === 'auto' || value === 'normal') return false
-  if (/oklch|oklab|color-mix|lch\(/i.test(value)) return false
-  return true
-}
-
-function copyExportStyles(source: Element, target: HTMLElement): void {
-  const computed = window.getComputedStyle(source)
-  for (const prop of EXPORT_STYLE_PROPS) {
-    const value = computed.getPropertyValue(prop).trim()
-    if (!isSafeCSSValue(value)) continue
-    target.style.setProperty(prop, value, computed.getPropertyPriority(prop))
+function relativeRect(el: Element, root: DOMRect, scale: number) {
+  const r = el.getBoundingClientRect()
+  return {
+    x: (r.left - root.left) * scale,
+    y: (r.top - root.top) * scale,
+    w: r.width * scale,
+    h: r.height * scale,
   }
 }
 
-function walkElementPairs(
-  source: Element,
-  clone: Element,
-  visit: (sourceEl: Element, cloneEl: HTMLElement) => void,
-): void {
-  if (clone instanceof HTMLElement) visit(source, clone)
-  const sourceChildren = [...source.children]
-  const cloneChildren = [...clone.children]
-  for (let i = 0; i < sourceChildren.length; i++) {
-    const cloneChild = cloneChildren[i]
-    if (cloneChild) walkElementPairs(sourceChildren[i], cloneChild, visit)
+function drawImageCover(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  const ir = img.naturalWidth / img.naturalHeight
+  const dr = w / h
+  let sx = 0
+  let sy = 0
+  let sw = img.naturalWidth
+  let sh = img.naturalHeight
+
+  if (ir > dr) {
+    sw = img.naturalHeight * dr
+    sx = (img.naturalWidth - sw) / 2
+  } else {
+    sh = img.naturalWidth / dr
+    sy = (img.naturalHeight - sh) / 2
   }
+
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h)
 }
 
-/** html2canvas no soporta oklch (Tailwind v4): quitamos CSS y usamos estilos calculados en rgb. */
-function prepareCloneForExport(
-  sourceRoot: HTMLElement,
-  cloneRoot: HTMLElement,
-  doc: Document,
-): void {
-  doc.querySelectorAll('link[rel="stylesheet"], style').forEach((node) => node.remove())
+function safeColor(cssColor: string, fallback: string): string {
+  if (!cssColor || /oklch|oklab|color-mix|lch\(/i.test(cssColor)) return fallback
+  return cssColor
+}
 
-  cloneRoot.removeAttribute('class')
-  cloneRoot.style.containerType = 'normal'
+function drawDomText(
+  ctx: CanvasRenderingContext2D,
+  el: HTMLElement,
+  cardRect: DOMRect,
+  scale: number,
+) {
+  const text = el.textContent?.trim()
+  if (!text) return
 
-  walkElementPairs(sourceRoot, cloneRoot, (sourceEl, cloneEl) => {
-    cloneEl.removeAttribute('class')
-    copyExportStyles(sourceEl, cloneEl)
+  const r = el.getBoundingClientRect()
+  const cs = window.getComputedStyle(el)
+  const fontSize = parseFloat(cs.fontSize)
+  if (!fontSize) return
+
+  ctx.save()
+  ctx.font = `${cs.fontWeight} ${fontSize * scale}px ${cs.fontFamily}`
+  ctx.fillStyle = safeColor(cs.color, '#ffffff')
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  if (cs.textShadow && cs.textShadow !== 'none') {
+    ctx.shadowColor = 'rgba(0,0,0,0.85)'
+    ctx.shadowBlur = 4 * scale
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 2 * scale
+  }
+
+  const x = (r.left - cardRect.left + r.width / 2) * scale
+  const y = (r.top - cardRect.top + r.height / 2) * scale
+  ctx.fillText(text, x, y)
+  ctx.restore()
+}
+
+async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob((b) => resolve(b), 'image/png', 1)
   })
+  if (blob) return blob
+
+  try {
+    const dataUrl = canvas.toDataURL('image/png')
+    const base64 = dataUrl.split(',')[1]
+    if (!base64) throw new Error('PNG vacío')
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return new Blob([bytes], { type: 'image/png' })
+  } catch {
+    throw new Error('No se pudo crear el PNG')
+  }
 }
 
 async function savePngBlob(blob: Blob, filename: string): Promise<void> {
@@ -209,32 +143,50 @@ export async function downloadStickerCard(
   element: HTMLElement,
   filename = 'mi-estampa-nuestromundial.png',
 ): Promise<void> {
-  await waitForImages(element)
-  const restoreImages = await inlineImages(element)
-
-  try {
-    const canvas = await html2canvas(element, {
-      scale: exportScale(),
-      useCORS: false,
-      allowTaint: false,
-      backgroundColor: '#ffffff',
-      logging: false,
-      imageTimeout: 15000,
-      onclone: (doc, clonedElement) => {
-        prepareCloneForExport(element, clonedElement, doc)
-      },
-    })
-
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (b) => (b ? resolve(b) : reject(new Error('No se pudo crear el PNG'))),
-        'image/png',
-        1,
-      )
-    })
-
-    await savePngBlob(blob, filename)
-  } finally {
-    restoreImages()
+  const cardRect = element.getBoundingClientRect()
+  if (cardRect.width < 2 || cardRect.height < 2) {
+    throw new Error('La vista previa no está visible. Espera a que cargue.')
   }
+
+  const templateEl = element.querySelector<HTMLImageElement>('[data-sticker-template]')
+  const photoEl = element.querySelector<HTMLImageElement>('[data-sticker-photo]')
+  if (!templateEl?.src) throw new Error('Falta la plantilla')
+  if (!photoEl?.src) throw new Error('Sube una foto antes de descargar')
+
+  await document.fonts.ready
+
+  const scale = exportScale()
+  const w = Math.max(1, Math.round(cardRect.width * scale))
+  const h = Math.max(1, Math.round(cardRect.height * scale))
+
+  const [template, photo] = await Promise.all([
+    loadImage(templateEl.src),
+    loadImage(photoEl.src),
+  ])
+
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('No se pudo preparar la exportación')
+
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, w, h)
+  drawImageCover(ctx, template, 0, 0, w, h)
+
+  const photoRect = relativeRect(photoEl, cardRect, scale)
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.4)'
+  ctx.shadowBlur = 14 * scale
+  ctx.shadowOffsetX = 0
+  ctx.shadowOffsetY = 6 * scale
+  ctx.drawImage(photo, photoRect.x, photoRect.y, photoRect.w, photoRect.h)
+  ctx.restore()
+
+  element.querySelectorAll<HTMLElement>('[data-sticker-text]').forEach((el) => {
+    drawDomText(ctx, el, cardRect, scale)
+  })
+
+  const pngBlob = await canvasToPngBlob(canvas)
+  await savePngBlob(pngBlob, filename)
 }
