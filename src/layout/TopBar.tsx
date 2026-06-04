@@ -52,26 +52,67 @@ export function TopBar({ onAdminUnlocked }: TopBarProps) {
   return (
     <>
       <header className={stickyHeader}>
-        <div className={`flex items-center justify-between gap-2 py-2.5 sm:py-3 ${pageX}`}>
-          <div className="flex min-w-0 items-center gap-2.5">
+        {/* Móvil: logo + título 2 líneas | botones apilados */}
+        <div
+          className={`flex min-h-[4.5rem] items-stretch justify-between gap-2 py-2.5 sm:hidden ${pageX}`}
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <button
               type="button"
               onClick={handleLogoTap}
-              className={`${touchBtn} rounded-lg p-0.5 ring-2 ring-[#6b00ff]/30`}
+              className={`${touchBtn} shrink-0 self-center rounded-lg p-0.5 ring-2 ring-[#6b00ff]/30`}
               aria-label="Logo Nuestro Mundial"
             >
               <img
                 src={logoMundial}
                 alt=""
-                className="h-10 w-10 rounded-lg object-cover sm:h-11 sm:w-11"
+                className="h-11 w-11 rounded-lg object-cover"
               />
             </button>
-            <span className="truncate text-sm font-black uppercase tracking-tighter text-stone-900 sm:text-base">
+            <h1 className="min-w-0 leading-none">
+              <span className="block text-[11px] font-black uppercase tracking-tighter text-stone-900">
+                Nuestro
+              </span>
+              <span className="mt-0.5 block text-[11px] font-black uppercase tracking-tighter text-stone-900">
+                Mundial
+              </span>
+            </h1>
+          </div>
+
+          <div className="flex w-[6.25rem] shrink-0 flex-col justify-center gap-1.5">
+            <InstagramLink stacked />
+            <AccountEntryButton
+              stacked
+              isLoggedIn={Boolean(user)}
+              displayName={profile?.display_name}
+              onClick={() => setShowAuth(true)}
+            />
+          </div>
+        </div>
+
+        {/* Tablet/desktop: una fila */}
+        <div
+          className={`hidden min-h-[3.25rem] items-center justify-between gap-3 py-2.5 sm:flex sm:py-3 ${pageX}`}
+        >
+          <div className="flex min-w-0 items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleLogoTap}
+              className={`${touchBtn} shrink-0 rounded-lg p-0.5 ring-2 ring-[#6b00ff]/30`}
+              aria-label="Logo Nuestro Mundial"
+            >
+              <img
+                src={logoMundial}
+                alt=""
+                className="h-11 w-11 rounded-lg object-cover"
+              />
+            </button>
+            <span className="text-base font-black uppercase tracking-tighter text-stone-900">
               Nuestro Mundial
             </span>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <AccountEntryButton
               isLoggedIn={Boolean(user)}
               displayName={profile?.display_name}
