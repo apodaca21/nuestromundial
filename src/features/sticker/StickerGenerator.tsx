@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Camera, Download, Images, Loader2, Sparkles } from 'lucide-react'
+import { Camera, Download, Images, Loader2 } from 'lucide-react'
 import { ApoWatermark } from '../../components/ApoWatermark'
 import { pageX } from '../../lib/layout'
 import { CountryFlagBadge } from './components/CountryFlagBadge'
@@ -116,10 +116,6 @@ export function StickerGenerator() {
 
       <div className={`${pageX} py-3 pb-6 sm:py-5`}>
         <header className="mb-4 text-center sm:mb-6">
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#6b00ff]/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#6b00ff]">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            Fase 2
-          </div>
           <h1 className="font-display text-3xl tracking-wide text-stone-900 sm:text-4xl">
             MI ESTAMPA
           </h1>
@@ -286,7 +282,7 @@ export function StickerGenerator() {
               )}
             </button>
             <p className="max-w-[300px] text-center text-[10px] leading-snug text-stone-400">
-              En iPhone usa «Compartir» → «Guardar imagen» si no se descarga solo.
+              En iPhone se abrirá Compartir → elige «Guardar imagen».
             </p>
             {exportError ? (
               <p className="text-center text-xs font-bold text-red-600">

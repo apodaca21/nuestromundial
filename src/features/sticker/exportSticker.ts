@@ -61,10 +61,28 @@ function exportScale(): number {
   return isMobile ? 2 : Math.min(3, window.devicePixelRatio || 2)
 }
 
+function copyComputedFontSizes(source: HTMLElement, clone: HTMLElement): void {
+  const sourceTexts = source.querySelectorAll('p')
+  const cloneTexts = clone.querySelectorAll('p')
+  sourceTexts.forEach((node, index) => {
+    const target = cloneTexts[index] as HTMLElement | undefined
+    if (!target) return
+    const { fontSize, lineHeight, letterSpacing } = window.getComputedStyle(node)
+    target.style.fontSize = fontSize
+    target.style.lineHeight = lineHeight
+    target.style.letterSpacing = letterSpacing
+  })
+}
+
 async function savePngBlob(blob: Blob, filename: string): Promise<void> {
   const file = new File([blob], filename, { type: 'image/png' })
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
 
-  if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
+  if (
+    isIOS &&
+    typeof navigator.share === 'function' &&
+    navigator.canShare?.({ files: [file] })
+  ) {
     try {
       await navigator.share({
         files: [file],
@@ -105,6 +123,10 @@ export async function downloadStickerCard(
       backgroundColor: '#ffffff',
       logging: false,
       imageTimeout: 15000,
+      onclone: (_doc, clonedElement) => {
+        clonedElement.style.containerType = 'normal'
+        copyComputedFontSizes(element, clonedElement)
+      },
     })
 
     const blob = await new Promise<Blob>((resolve, reject) => {
