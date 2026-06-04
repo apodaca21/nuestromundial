@@ -53,9 +53,9 @@ export function TopBar({ onAdminUnlocked }: TopBarProps) {
   return (
     <>
       <header className={stickyHeader}>
-        {/* Móvil: logo + título 2 líneas | botones apilados */}
+        {/* Solo móvil */}
         <div
-          className={`grid min-h-[4.75rem] grid-cols-[auto_1fr_auto] items-center gap-2 py-2.5 sm:hidden ${pageX}`}
+          className={`grid min-h-[5rem] grid-cols-[3rem_minmax(0,1fr)_5.75rem] items-center gap-x-2 gap-y-0 py-2.5 sm:hidden ${pageX}`}
         >
           <button
             type="button"
@@ -70,9 +70,9 @@ export function TopBar({ onAdminUnlocked }: TopBarProps) {
             />
           </button>
 
-          <BrandWordmark variant="mobile" />
+          <BrandWordmark />
 
-          <div className="flex w-[6.25rem] shrink-0 flex-col justify-center justify-self-end gap-1.5">
+          <div className="flex w-full shrink-0 flex-col justify-center justify-self-end gap-1.5">
             <InstagramLink stacked />
             <AccountEntryButton
               stacked
@@ -83,7 +83,7 @@ export function TopBar({ onAdminUnlocked }: TopBarProps) {
           </div>
         </div>
 
-        {/* Tablet/desktop: una fila */}
+        {/* PC / tablet — layout original */}
         <div
           className={`hidden min-h-[3.25rem] items-center justify-between gap-3 py-2.5 sm:flex sm:py-3 ${pageX}`}
         >
@@ -97,10 +97,12 @@ export function TopBar({ onAdminUnlocked }: TopBarProps) {
               <img
                 src={logoMundial}
                 alt=""
-                className="h-11 w-11 rounded-lg object-cover"
+                className="h-10 w-10 rounded-lg object-cover sm:h-11 sm:w-11"
               />
             </button>
-            <BrandWordmark variant="desktop" />
+            <span className="whitespace-nowrap text-sm font-black uppercase tracking-tighter text-stone-900 sm:text-base">
+              Nuestro Mundial
+            </span>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
