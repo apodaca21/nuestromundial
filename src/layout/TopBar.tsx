@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { BrandWordmark } from '../components/BrandWordmark'
 import { AccountEntryButton } from '../components/AccountEntryButton'
 import { AdminGateModal } from '../components/AdminGateModal'
 import { InstagramLink } from '../components/InstagramLink'
@@ -69,14 +70,7 @@ export function TopBar({ onAdminUnlocked }: TopBarProps) {
             />
           </button>
 
-          <h1 className="flex flex-col items-center justify-center px-1 text-center leading-[1.05]">
-            <span className="block text-xl font-black uppercase tracking-tighter text-stone-900">
-              Nuestro
-            </span>
-            <span className="block text-xl font-black uppercase tracking-tighter text-stone-900">
-              Mundial
-            </span>
-          </h1>
+          <BrandWordmark variant="mobile" />
 
           <div className="flex w-[6.25rem] shrink-0 flex-col justify-center justify-self-end gap-1.5">
             <InstagramLink stacked />
@@ -106,9 +100,7 @@ export function TopBar({ onAdminUnlocked }: TopBarProps) {
                 className="h-11 w-11 rounded-lg object-cover"
               />
             </button>
-            <span className="text-base font-black uppercase tracking-tighter text-stone-900">
-              Nuestro Mundial
-            </span>
+            <BrandWordmark variant="desktop" />
           </div>
 
           <div className="flex shrink-0 items-center gap-2">

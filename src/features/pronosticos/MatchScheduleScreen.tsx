@@ -27,8 +27,8 @@ export function MatchScheduleScreen({ onSelectMatch }: MatchScheduleScreenProps)
   return (
     <div className={`${pageX} py-4 sm:py-5`}>
       <header className="mb-4">
-        <h1 className="text-xl font-black uppercase tracking-tighter text-stone-900">
-          Calendario
+        <h1 className="font-display text-2xl tracking-[0.06em] text-stone-900 sm:text-3xl">
+          CALENDARIO
         </h1>
         <p className="mt-1 text-xs text-stone-500">
           Toca un partido para ver probabilidades y votar
