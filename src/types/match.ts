@@ -57,7 +57,12 @@ export interface PronosticosViewModel {
   communityPoll: CommunityPoll
 }
 
-export type AppTab = 'quiniela' | 'pronosticos' | 'bingo' | 'admin'
+export type AppTab =
+  | 'quiniela'
+  | 'pronosticos'
+  | 'bingo'
+  | 'estampa'
+  | 'admin'
 
 export interface ScheduleDayGroup {
   dateKey: string

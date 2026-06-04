@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { ClipboardList, Grid3x3, Settings, TrendingUp } from 'lucide-react'
+import { ClipboardList, Grid3x3, Image, Settings, TrendingUp } from 'lucide-react'
 import type { AppTab } from '../types/match'
 import { navBar, navInner } from '../lib/layout'
 
@@ -13,6 +13,7 @@ const publicTabs: { id: AppTab; label: string; icon: LucideIcon }[] = [
   { id: 'quiniela', label: 'Quiniela', icon: ClipboardList },
   { id: 'pronosticos', label: 'Pronósticos', icon: TrendingUp },
   { id: 'bingo', label: 'Bingo', icon: Grid3x3 },
+  { id: 'estampa', label: 'Mi Estampa', icon: Image },
 ]
 
 const adminTab = { id: 'admin' as const, label: 'Admin', icon: Settings }
@@ -54,7 +55,7 @@ function NavTabMobile({
         />
       </span>
       <span
-        className={`max-w-full truncate text-[9px] font-bold uppercase leading-none tracking-wide ${
+        className={`max-w-full truncate text-[8px] font-bold uppercase leading-none tracking-wide ${
           isActive ? 'text-white' : 'text-stone-500'
         }`}
       >

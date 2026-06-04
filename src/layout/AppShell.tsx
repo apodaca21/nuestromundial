@@ -7,6 +7,8 @@ import { AdminScreen } from '../features/admin/AdminScreen'
 import { BingoPlaceholder } from '../features/bingo/BingoPlaceholder'
 import { PronosticosFlow } from '../features/pronosticos/PronosticosFlow'
 import { QuinielaPlaceholder } from '../features/quiniela/QuinielaPlaceholder'
+import { StickerErrorBoundary } from '../features/sticker/StickerErrorBoundary'
+import { StickerGenerator } from '../features/sticker/StickerGenerator'
 import { BottomNavigation } from './BottomNavigation'
 import { TopBar } from './TopBar'
 
@@ -40,6 +42,11 @@ export function AppShell() {
           <PronosticosFlow onDetailOpenChange={setPronosticosInDetail} />
         )}
         {activeTab === 'bingo' && <BingoPlaceholder />}
+        {activeTab === 'estampa' && (
+          <StickerErrorBoundary>
+            <StickerGenerator />
+          </StickerErrorBoundary>
+        )}
         {adminUnlocked && activeTab === 'admin' && (
           <AdminScreen onExit={() => setActiveTab('pronosticos')} />
         )}
