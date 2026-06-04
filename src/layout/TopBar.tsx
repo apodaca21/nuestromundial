@@ -54,32 +54,31 @@ export function TopBar({ onAdminUnlocked }: TopBarProps) {
       <header className={stickyHeader}>
         {/* Móvil: logo + título 2 líneas | botones apilados */}
         <div
-          className={`flex min-h-[4.5rem] items-stretch justify-between gap-2 py-2.5 sm:hidden ${pageX}`}
+          className={`grid min-h-[4.75rem] grid-cols-[auto_1fr_auto] items-center gap-2 py-2.5 sm:hidden ${pageX}`}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <button
-              type="button"
-              onClick={handleLogoTap}
-              className={`${touchBtn} shrink-0 self-center rounded-lg p-0.5 ring-2 ring-[#6b00ff]/30`}
-              aria-label="Logo Nuestro Mundial"
-            >
-              <img
-                src={logoMundial}
-                alt=""
-                className="h-11 w-11 rounded-lg object-cover"
-              />
-            </button>
-            <h1 className="min-w-0 leading-none">
-              <span className="block text-[11px] font-black uppercase tracking-tighter text-stone-900">
-                Nuestro
-              </span>
-              <span className="mt-0.5 block text-[11px] font-black uppercase tracking-tighter text-stone-900">
-                Mundial
-              </span>
-            </h1>
-          </div>
+          <button
+            type="button"
+            onClick={handleLogoTap}
+            className={`${touchBtn} shrink-0 justify-self-start rounded-lg p-0.5 ring-2 ring-[#6b00ff]/30`}
+            aria-label="Logo Nuestro Mundial"
+          >
+            <img
+              src={logoMundial}
+              alt=""
+              className="h-12 w-12 rounded-lg object-cover"
+            />
+          </button>
 
-          <div className="flex w-[6.25rem] shrink-0 flex-col justify-center gap-1.5">
+          <h1 className="flex flex-col items-center justify-center px-1 text-center leading-[1.05]">
+            <span className="block text-xl font-black uppercase tracking-tighter text-stone-900">
+              Nuestro
+            </span>
+            <span className="block text-xl font-black uppercase tracking-tighter text-stone-900">
+              Mundial
+            </span>
+          </h1>
+
+          <div className="flex w-[6.25rem] shrink-0 flex-col justify-center justify-self-end gap-1.5">
             <InstagramLink stacked />
             <AccountEntryButton
               stacked
