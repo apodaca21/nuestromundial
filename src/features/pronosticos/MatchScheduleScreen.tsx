@@ -6,6 +6,7 @@ import {
   getTournamentRevision,
   subscribeTournament,
 } from '../../lib/tournamentStore'
+import { formatDayLabelFromKickoff } from '../../lib/format'
 import { pageX } from '../../lib/layout'
 import { MatchListItem } from './components/MatchListItem'
 
@@ -61,12 +62,7 @@ export function MatchScheduleScreen({ onSelectMatch }: MatchScheduleScreenProps)
               ).map(({ dateKey, items }) => (
                 <div key={dateKey}>
                   <h3 className="mb-2 text-xs font-bold capitalize text-stone-600">
-                    {new Intl.DateTimeFormat('es-MX', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                      timeZone: 'America/Mexico_City',
-                    }).format(new Date(`${dateKey}T12:00:00`))}
+                    {formatDayLabelFromKickoff(items[0].kickoffAt)}
                   </h3>
                   <div className="space-y-2">
                     {items.map((match) => (

@@ -5,6 +5,7 @@ import type { Match, ScheduleDayGroup, TournamentPhase } from '../types/match'
 import type { TournamentState } from '../types/tournament'
 import { getTournamentState } from './tournamentStore'
 import { resolveMatchStatus } from './matchStatus'
+import { APP_DISPLAY_TIMEZONE } from './format'
 
 const TZ_OFFSET: Record<string, string> = {
   'America/Mexico_City': '-06:00',
@@ -185,7 +186,7 @@ export function groupMatchesByDay(matches: Match[]): ScheduleDayGroup[] {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-    timeZone: 'America/Mexico_City',
+    timeZone: APP_DISPLAY_TIMEZONE,
   })
 
   const map = new Map<string, Match[]>()

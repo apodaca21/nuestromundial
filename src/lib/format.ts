@@ -1,6 +1,9 @@
+/** Zona horaria para mostrar partidos en la app (Pacífico / Tijuana). */
+export const APP_DISPLAY_TIMEZONE = 'America/Tijuana'
+
 export function formatMatchDateTime(
   isoDate: string,
-  timeZone = 'America/Mexico_City',
+  timeZone = APP_DISPLAY_TIMEZONE,
 ): string {
   const date = new Date(isoDate)
   return new Intl.DateTimeFormat('es-MX', {
@@ -16,7 +19,7 @@ export function formatMatchDateTime(
 
 export function formatMatchTime(
   isoDate: string,
-  timeZone = 'America/Mexico_City',
+  timeZone = APP_DISPLAY_TIMEZONE,
 ): string {
   const date = new Date(isoDate)
   return new Intl.DateTimeFormat('es-MX', {
@@ -42,6 +45,16 @@ export function formatDayHeader(dateKey: string): string {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-    timeZone: 'America/Mexico_City',
+    timeZone: APP_DISPLAY_TIMEZONE,
   }).format(date)
+}
+
+export function formatDayLabelFromKickoff(isoDate: string): string {
+  return new Intl.DateTimeFormat('es-MX', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: APP_DISPLAY_TIMEZONE,
+  }).format(new Date(isoDate))
 }

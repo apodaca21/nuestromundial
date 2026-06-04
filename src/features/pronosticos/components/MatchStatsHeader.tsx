@@ -72,7 +72,7 @@ export function MatchStatsHeader({ match }: MatchStatsHeaderProps) {
       </div>
 
       <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-widest text-stone-500">
-        {formatMatchDateTime(kickoffAt)} · hora CDMX
+        {formatMatchDateTime(kickoffAt)} · hora Tijuana
       </p>
     </section>
   )
