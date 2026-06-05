@@ -28,6 +28,7 @@ export function StickerGenerator() {
   const cardRef = useRef<HTMLDivElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  const originalPhotoFileRef = useRef<File | null>(null)
   const [modelReady, setModelReady] = useState(false)
 
   const [countryId, setCountryId] = useState<StickerCountryId>('mex')
@@ -71,45 +72,70 @@ export function StickerGenerator() {
     }
   }, [removeBackgroundEnabled])
 
-  const onPhotoSelected = useCallback(async (file: File | undefined) => {
-    if (!file) return
-    setUploadError(null)
-    setIsProcessing(true)
-    setProcessingProgress({ percent: 0, label: 'Iniciando…' })
+  const processPhotoFile = useCallback(
+    async (file: File, removeBackground: boolean, resetTransform = false) => {
+      setUploadError(null)
+      setIsProcessing(true)
+      setProcessingProgress({ percent: 0, label: 'Iniciando…' })
 
-    const immediatePreview = URL.createObjectURL(file)
-    setPhotoUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev)
-      return immediatePreview
-    })
-    setPhotoTransform(DEFAULT_PHOTO_TRANSFORM)
+      if (resetTransform) {
+        setPhotoTransform(DEFAULT_PHOTO_TRANSFORM)
+      }
 
-    try {
-      const processed = await handleImageUpload(file, setProcessingProgress, {
-        removeBackground: removeBackgroundEnabled,
-      })
-      setPhotoUrl((prev) => {
-        if (prev && prev !== processed) URL.revokeObjectURL(prev)
-        return processed
-      })
-    } catch (err) {
+      const immediatePreview = URL.createObjectURL(file)
       setPhotoUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev)
-        return null
+        return immediatePreview
       })
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'No se pudo procesar la foto. Prueba otra imagen o usa Wi‑Fi.'
-      setUploadError(msg)
-      console.error('[StickerGenerator] removeBackground', err)
-    } finally {
-      setIsProcessing(false)
-      setProcessingProgress(null)
+
+      try {
+        const processed = await handleImageUpload(file, setProcessingProgress, {
+          removeBackground,
+        })
+        setPhotoUrl((prev) => {
+          if (prev && prev !== processed) URL.revokeObjectURL(prev)
+          return processed
+        })
+      } catch (err) {
+        originalPhotoFileRef.current = null
+        setPhotoUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'No se pudo procesar la foto. Prueba otra imagen o usa Wi‑Fi.'
+        setUploadError(msg)
+        console.error('[StickerGenerator] processPhoto', err)
+      } finally {
+        setIsProcessing(false)
+        setProcessingProgress(null)
+      }
+    },
+    [],
+  )
+
+  const onRemoveBackgroundToggle = () => {
+    if (isProcessing) return
+    const next = !removeBackgroundEnabled
+    setRemoveBackgroundEnabled(next)
+    const file = originalPhotoFileRef.current
+    if (file) {
+      void processPhotoFile(file, next)
+    }
+  }
+
+  const onPhotoSelected = useCallback(
+    async (file: File | undefined) => {
+      if (!file) return
+      originalPhotoFileRef.current = file
+      await processPhotoFile(file, removeBackgroundEnabled, true)
       if (galleryInputRef.current) galleryInputRef.current.value = ''
       if (cameraInputRef.current) cameraInputRef.current.value = ''
-    }
-  }, [removeBackgroundEnabled])
+    },
+    [processPhotoFile, removeBackgroundEnabled],
+  )
 
   const copyShareLink = async () => {
     try {
@@ -317,7 +343,7 @@ export function StickerGenerator() {
                       : 'Activar quitar fondo con IA'
                   }
                   disabled={isProcessing}
-                  onClick={() => setRemoveBackgroundEnabled((prev) => !prev)}
+                  onClick={onRemoveBackgroundToggle}
                   className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-60 ${
                     removeBackgroundEnabled ? 'bg-[#6b00ff]' : 'bg-stone-300'
                   }`}
