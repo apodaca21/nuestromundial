@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Camera, Download, Images, Loader2 } from 'lucide-react'
+import { Camera, Download, Images, Link2, Loader2 } from 'lucide-react'
 import { ApoWatermark } from '../../components/ApoWatermark'
+import { ESTAMPA_SHARE_MESSAGE } from '../../lib/appRoutes'
 import { pageX } from '../../lib/layout'
 import { CountryFlagBadge } from './components/CountryFlagBadge'
 import {
@@ -40,6 +41,7 @@ export function StickerGenerator() {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   const country = getStickerCountry(countryId)
 
@@ -100,6 +102,16 @@ export function StickerGenerator() {
       if (cameraInputRef.current) cameraInputRef.current.value = ''
     }
   }, [])
+
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(ESTAMPA_SHARE_MESSAGE)
+      setLinkCopied(true)
+      window.setTimeout(() => setLinkCopied(false), 2500)
+    } catch {
+      setExportError('No se pudo copiar el enlace')
+    }
+  }
 
   const handleDownload = async () => {
     const el = cardRef.current
@@ -310,8 +322,17 @@ export function StickerGenerator() {
                 </>
               )}
             </button>
+            <button
+              type="button"
+              onClick={copyShareLink}
+              className="flex min-h-11 w-full max-w-none items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 text-xs font-black uppercase tracking-wide text-stone-600 transition active:scale-[0.98] sm:max-w-[300px]"
+            >
+              <Link2 className="h-4 w-4" aria-hidden />
+              {linkCopied ? '¡Enlace copiado!' : 'Copiar enlace para WhatsApp'}
+            </button>
             <p className="max-w-[300px] text-center text-[10px] leading-snug text-stone-400">
-              En iPhone se abrirá Compartir → elige «Guardar imagen».
+              Al compartir la imagen se incluye: «¡Crea tu carta aquí!» con el
+              enlace. En WhatsApp pégalo como segundo mensaje si no sale solo.
             </p>
             {exportError ? (
               <p className="text-center text-xs font-bold text-red-600">

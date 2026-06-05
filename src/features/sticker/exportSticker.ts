@@ -1,3 +1,5 @@
+import { ESTAMPA_SHARE_MESSAGE } from '../../lib/appRoutes'
+
 async function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -118,19 +120,26 @@ async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 
 async function savePngBlob(blob: Blob, filename: string): Promise<void> {
   const file = new File([blob], filename, { type: 'image/png' })
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
 
-  if (
-    isIOS &&
-    typeof navigator.share === 'function' &&
-    navigator.canShare?.({ files: [file] })
-  ) {
+  if (typeof navigator.share === 'function') {
+    const withText: ShareData = {
+      files: [file],
+      text: ESTAMPA_SHARE_MESSAGE,
+      title: 'Nuestro Mundial 2026',
+    }
     try {
-      await navigator.share({
-        files: [file],
-        title: 'Mi estampa — Nuestro Mundial',
-      })
-      return
+      if (!navigator.canShare || navigator.canShare(withText)) {
+        await navigator.share(withText)
+        return
+      }
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          text: ESTAMPA_SHARE_MESSAGE,
+          title: 'Nuestro Mundial 2026',
+        })
+        return
+      }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
     }
