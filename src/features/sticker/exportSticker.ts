@@ -76,8 +76,10 @@ function drawDomText(
   ctx.textBaseline = 'middle'
 
   if (el.hasAttribute('data-sticker-name')) {
-    ctx.fillStyle = 'rgba(0,0,0,0.75)'
-    ctx.fillText(text, x + 1 * scale, y + 2 * scale)
+    ctx.shadowColor = 'rgba(0,0,0,0.28)'
+    ctx.shadowBlur = 1.5 * scale
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 1 * scale
     ctx.fillStyle = safeColor(cs.color, '#ffffff')
     ctx.fillText(text, x, y)
   } else if (cs.textShadow && cs.textShadow !== 'none') {
