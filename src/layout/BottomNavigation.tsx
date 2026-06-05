@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import { ClipboardList, Grid3x3, Image, Settings, TrendingUp } from 'lucide-react'
 import type { AppTab } from '../types/match'
+import { isTabEnabled } from '../lib/featureFlags'
 import { navBar, navInner } from '../lib/layout'
 
 interface BottomNavigationProps {
@@ -9,12 +10,14 @@ interface BottomNavigationProps {
   showAdmin?: boolean
 }
 
-const publicTabs: { id: AppTab; label: string; icon: LucideIcon }[] = [
+const allPublicTabs: { id: AppTab; label: string; icon: LucideIcon }[] = [
   { id: 'quiniela', label: 'Quiniela', icon: ClipboardList },
   { id: 'pronosticos', label: 'Pronósticos', icon: TrendingUp },
   { id: 'bingo', label: 'Bingo', icon: Grid3x3 },
   { id: 'estampa', label: 'Mi Estampa', icon: Image },
 ]
+
+const publicTabs = allPublicTabs.filter((tab) => isTabEnabled(tab.id))
 
 const adminTab = { id: 'admin' as const, label: 'Admin', icon: Settings }
 

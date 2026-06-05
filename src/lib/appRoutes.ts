@@ -1,4 +1,5 @@
 import type { AppTab } from '../types/match'
+import { isTabEnabled } from './featureFlags'
 
 export const SITE_ORIGIN = 'https://nuestromundial.com'
 
@@ -55,7 +56,8 @@ export const SECTION_META: Record<AppTab, SectionMeta> = {
 
 export function tabFromPathname(pathname: string): AppTab {
   const normalized = pathname.replace(/\/$/, '') || '/'
-  return PATH_TO_TAB[normalized] ?? 'pronosticos'
+  const tab = PATH_TO_TAB[normalized] ?? 'pronosticos'
+  return isTabEnabled(tab) ? tab : 'pronosticos'
 }
 
 export function pathFromTab(tab: AppTab): string {
