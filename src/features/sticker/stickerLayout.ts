@@ -5,6 +5,9 @@ export const STICKER_NAME_FONT_SM = 'clamp(12px, 5.25cqw, 17px)'
 
 export const STICKER_WM_FONT = 'clamp(8px, 3.2cqw, 11px)'
 
+/** Sombra dura sin blur, como en estampas Panini originales */
+export const STICKER_NAME_TEXT_SHADOW = '1px 2px 0 rgba(0,0,0,0.75)'
+
 /** Barra superior: nombre del jugador */
 export const STICKER_NAME_BAR = {
   bottom: '7%',

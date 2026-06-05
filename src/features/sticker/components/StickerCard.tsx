@@ -5,6 +5,7 @@ import { clampPhotoTransform } from '../photoTransform'
 import {
   STICKER_NAME_FONT_MD,
   STICKER_NAME_FONT_SM,
+  STICKER_NAME_TEXT_SHADOW,
 } from '../stickerLayout'
 
 export interface StickerCardProps {
@@ -176,11 +177,12 @@ export const StickerCard = forwardRef<HTMLDivElement, StickerCardProps>(
         <TextOnBar layout={nameLayout}>
           <p
             data-sticker-text
+            data-sticker-name
             className="w-full text-center font-display font-black uppercase leading-[0.9] tracking-[0.03em]"
             style={{
               fontSize: nameFontSize,
               color: nameLayout.color,
-              textShadow: '0 2px 4px rgba(0,0,0,0.9)',
+              textShadow: STICKER_NAME_TEXT_SHADOW,
             }}
           >
             {displayName}

@@ -67,22 +67,31 @@ function drawDomText(
   const fontSize = parseFloat(cs.fontSize)
   if (!fontSize) return
 
+  const x = (r.left - cardRect.left + r.width / 2) * scale
+  const y = (r.top - cardRect.top + r.height / 2) * scale
+
   ctx.save()
   ctx.font = `${cs.fontWeight} ${fontSize * scale}px ${cs.fontFamily}`
-  ctx.fillStyle = safeColor(cs.color, '#ffffff')
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
 
-  if (cs.textShadow && cs.textShadow !== 'none') {
-    ctx.shadowColor = 'rgba(0,0,0,0.85)'
-    ctx.shadowBlur = 4 * scale
+  if (el.hasAttribute('data-sticker-name')) {
+    ctx.fillStyle = 'rgba(0,0,0,0.75)'
+    ctx.fillText(text, x + 1 * scale, y + 2 * scale)
+    ctx.fillStyle = safeColor(cs.color, '#ffffff')
+    ctx.fillText(text, x, y)
+  } else if (cs.textShadow && cs.textShadow !== 'none') {
+    ctx.shadowColor = 'rgba(0,0,0,0.7)'
+    ctx.shadowBlur = 2 * scale
     ctx.shadowOffsetX = 0
-    ctx.shadowOffsetY = 2 * scale
+    ctx.shadowOffsetY = 1 * scale
+    ctx.fillStyle = safeColor(cs.color, '#ffffff')
+    ctx.fillText(text, x, y)
+  } else {
+    ctx.fillStyle = safeColor(cs.color, '#ffffff')
+    ctx.fillText(text, x, y)
   }
 
-  const x = (r.left - cardRect.left + r.width / 2) * scale
-  const y = (r.top - cardRect.top + r.height / 2) * scale
-  ctx.fillText(text, x, y)
   ctx.restore()
 }
 
