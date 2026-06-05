@@ -158,32 +158,61 @@ export function StickerGenerator() {
               <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-stone-500">
                 Selecciona plantilla
               </p>
-              <div className="-mx-0.5 flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory [scrollbar-width:thin] sm:mx-0 sm:grid sm:grid-cols-7 sm:gap-2 sm:overflow-visible sm:pb-0">
-                {STICKER_COUNTRIES.map((c) => {
-                  const active = countryId === c.id
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setCountryId(c.id)}
-                      className={`flex w-[3.4rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-xl border-2 px-1 py-2 transition-all active:scale-95 sm:w-auto ${
-                        active
-                          ? 'border-[#6b00ff] bg-[#6b00ff]/8 shadow-md shadow-[#6b00ff]/15'
-                          : 'border-stone-200 bg-stone-50 hover:border-stone-300'
-                      }`}
-                      aria-pressed={active}
-                    >
-                      <CountryFlagBadge countryId={c.id} className="h-6 w-8" />
-                      <span
-                        className={`text-[8px] font-black uppercase leading-tight ${
-                          active ? 'text-[#6b00ff]' : 'text-stone-500'
+              <div className="flex flex-col gap-1.5 sm:gap-2">
+                <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                  {STICKER_COUNTRIES.slice(0, 5).map((c) => {
+                    const active = countryId === c.id
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setCountryId(c.id)}
+                        className={`flex w-full flex-col items-center gap-0.5 rounded-xl border-2 px-0.5 py-1.5 transition-all active:scale-95 sm:py-2 ${
+                          active
+                            ? 'border-[#6b00ff] bg-[#6b00ff]/8 shadow-md shadow-[#6b00ff]/15'
+                            : 'border-stone-200 bg-stone-50 hover:border-stone-300'
                         }`}
+                        aria-pressed={active}
                       >
-                        {c.code}
-                      </span>
-                    </button>
-                  )
-                })}
+                        <CountryFlagBadge countryId={c.id} className="h-5 w-7 sm:h-6 sm:w-8" />
+                        <span
+                          className={`text-[7px] font-black uppercase leading-tight sm:text-[8px] ${
+                            active ? 'text-[#6b00ff]' : 'text-stone-500'
+                          }`}
+                        >
+                          {c.code}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="mx-auto grid w-4/5 grid-cols-4 gap-1.5 sm:gap-2">
+                  {STICKER_COUNTRIES.slice(5).map((c) => {
+                    const active = countryId === c.id
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setCountryId(c.id)}
+                        className={`flex w-full flex-col items-center gap-0.5 rounded-xl border-2 px-0.5 py-1.5 transition-all active:scale-95 sm:py-2 ${
+                          active
+                            ? 'border-[#6b00ff] bg-[#6b00ff]/8 shadow-md shadow-[#6b00ff]/15'
+                            : 'border-stone-200 bg-stone-50 hover:border-stone-300'
+                        }`}
+                        aria-pressed={active}
+                      >
+                        <CountryFlagBadge countryId={c.id} className="h-5 w-7 sm:h-6 sm:w-8" />
+                        <span
+                          className={`text-[7px] font-black uppercase leading-tight sm:text-[8px] ${
+                            active ? 'text-[#6b00ff]' : 'text-stone-500'
+                          }`}
+                        >
+                          {c.code}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
 

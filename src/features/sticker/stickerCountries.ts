@@ -12,6 +12,8 @@ export type StickerCountryId =
   | 'deu'
   | 'eng'
   | 'fra'
+  | 'por'
+  | 'usa'
 
 /** Recorte de la foto del jugador (% del lienzo) */
 export interface StickerPhotoLayout {
@@ -118,6 +120,28 @@ export const STICKER_COUNTRIES: StickerCountry[] = [
     flag: '🇫🇷',
     code: 'FRA',
     templateSrc: '/estampas/francia.jpg',
+    photo: { top: '10%', right: '22%', bottom: '25%', left: '5%' },
+    name: { ...STICKER_NAME_BAR, width: '58%' },
+    watermarkApo: { ...STICKER_WM_APO_BAR, width: '54%' },
+    watermarkDomain: { ...STICKER_WM_DOMAIN_BAR, width: '54%' },
+  },
+  {
+    id: 'por',
+    label: 'Portugal',
+    flag: '🇵🇹',
+    code: 'POR',
+    templateSrc: '/estampas/portugal.jpg',
+    photo: { top: '10%', right: '22%', bottom: '25%', left: '5%' },
+    name: { ...STICKER_NAME_BAR, width: '58%' },
+    watermarkApo: { ...STICKER_WM_APO_BAR, width: '54%' },
+    watermarkDomain: { ...STICKER_WM_DOMAIN_BAR, width: '54%' },
+  },
+  {
+    id: 'usa',
+    label: 'Estados Unidos',
+    flag: '🇺🇸',
+    code: 'USA',
+    templateSrc: '/estampas/usa.jpg',
     photo: { top: '10%', right: '22%', bottom: '25%', left: '5%' },
     name: { ...STICKER_NAME_BAR, width: '58%' },
     watermarkApo: { ...STICKER_WM_APO_BAR, width: '54%' },

@@ -95,6 +95,32 @@ function FranceFlag({ className = 'h-6 w-8' }: FlagProps) {
   )
 }
 
+function PortugalFlag({ className = 'h-6 w-8' }: FlagProps) {
+  return (
+    <span className={badgeClass(className)} aria-hidden>
+      <svg viewBox="0 0 60 40" className="h-full w-full">
+        <rect width="24" height="40" fill="#006600" />
+        <rect x="24" width="36" height="40" fill="#ff0000" />
+        <circle cx="24" cy="20" r="7" fill="#ffcc00" stroke="#003399" strokeWidth="1.5" />
+      </svg>
+    </span>
+  )
+}
+
+function UsaFlag({ className = 'h-6 w-8' }: FlagProps) {
+  return (
+    <span className={badgeClass(className)} aria-hidden>
+      <img
+        src="https://flagcdn.com/w80/us.png"
+        alt=""
+        className="h-full w-full object-cover"
+        loading="lazy"
+        decoding="async"
+      />
+    </span>
+  )
+}
+
 const FLAGS: Record<
   StickerCountryId,
   (props: FlagProps) => ReactElement
@@ -106,6 +132,8 @@ const FLAGS: Record<
   deu: GermanyFlag,
   eng: EnglandFlag,
   fra: FranceFlag,
+  por: PortugalFlag,
+  usa: UsaFlag,
 }
 
 export function CountryFlagBadge({
