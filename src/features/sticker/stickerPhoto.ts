@@ -159,6 +159,19 @@ async function resizePhotoForAI(
   return blob
 }
 
+export async function prepareStickerPhotoFull(
+  file: File,
+  onProgress?: ProgressFn,
+): Promise<string> {
+  const validationError = validateStickerPhoto(file)
+  if (validationError) throw new Error(validationError)
+
+  report(onProgress, 1, 'Iniciando…')
+  const resized = await resizePhotoForAI(file, onProgress)
+  report(onProgress, 100, '¡Listo!')
+  return URL.createObjectURL(resized)
+}
+
 export async function removeStickerBackground(
   file: File,
   onProgress?: ProgressFn,
@@ -203,6 +216,10 @@ export async function removeStickerBackground(
 export async function handleImageUpload(
   file: File,
   onProgress?: ProgressFn,
+  options?: { removeBackground?: boolean },
 ): Promise<string> {
+  if (options?.removeBackground === false) {
+    return prepareStickerPhotoFull(file, onProgress)
+  }
   return removeStickerBackground(file, onProgress)
 }

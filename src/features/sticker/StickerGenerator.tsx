@@ -42,6 +42,7 @@ export function StickerGenerator() {
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [removeBackgroundEnabled, setRemoveBackgroundEnabled] = useState(true)
 
   const country = getStickerCountry(countryId)
 
@@ -52,6 +53,11 @@ export function StickerGenerator() {
   }, [photoUrl])
 
   useEffect(() => {
+    if (!removeBackgroundEnabled) {
+      setModelReady(false)
+      return
+    }
+
     let cancelled = false
     preloadStickerBackgroundModel()
       .then(() => {
@@ -63,7 +69,7 @@ export function StickerGenerator() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [removeBackgroundEnabled])
 
   const onPhotoSelected = useCallback(async (file: File | undefined) => {
     if (!file) return
@@ -79,10 +85,12 @@ export function StickerGenerator() {
     setPhotoTransform(DEFAULT_PHOTO_TRANSFORM)
 
     try {
-      const cutout = await handleImageUpload(file, setProcessingProgress)
+      const processed = await handleImageUpload(file, setProcessingProgress, {
+        removeBackground: removeBackgroundEnabled,
+      })
       setPhotoUrl((prev) => {
-        if (prev && prev !== cutout) URL.revokeObjectURL(prev)
-        return cutout
+        if (prev && prev !== processed) URL.revokeObjectURL(prev)
+        return processed
       })
     } catch (err) {
       setPhotoUrl((prev) => {
@@ -101,7 +109,7 @@ export function StickerGenerator() {
       if (galleryInputRef.current) galleryInputRef.current.value = ''
       if (cameraInputRef.current) cameraInputRef.current.value = ''
     }
-  }, [])
+  }, [removeBackgroundEnabled])
 
   const copyShareLink = async () => {
     try {
@@ -288,11 +296,51 @@ export function StickerGenerator() {
                   {uploadError}
                 </p>
               ) : null}
-              <p className="mt-2 text-center text-[10px] leading-snug text-stone-400">
-                {modelReady
-                  ? 'IA lista. En iPhone usa Galería; el fondo se quita en tu teléfono.'
-                  : 'La 1ª vez descarga la IA (~40 MB, Wi‑Fi). Luego es más rápido.'}
-              </p>
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-black uppercase tracking-wide text-stone-700">
+                    Quitar fondo con IA
+                  </p>
+                  <p className="text-[10px] leading-snug text-stone-400">
+                    {removeBackgroundEnabled
+                      ? 'Solo tu figura, sin el fondo de la foto'
+                      : 'Se usa la foto completa, con su fondo'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={removeBackgroundEnabled}
+                  aria-label={
+                    removeBackgroundEnabled
+                      ? 'Desactivar quitar fondo con IA'
+                      : 'Activar quitar fondo con IA'
+                  }
+                  disabled={isProcessing}
+                  onClick={() => setRemoveBackgroundEnabled((prev) => !prev)}
+                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-60 ${
+                    removeBackgroundEnabled ? 'bg-[#6b00ff]' : 'bg-stone-300'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                      removeBackgroundEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+              {removeBackgroundEnabled ? (
+                <p className="mt-2 text-center text-[10px] leading-snug text-stone-400">
+                  {modelReady
+                    ? 'IA lista. En iPhone usa Galería; el fondo se quita en tu teléfono.'
+                    : 'La 1ª vez descarga la IA (~40 MB, Wi‑Fi). Luego es más rápido.'}
+                </p>
+              ) : (
+                <p className="mt-2 text-center text-[10px] leading-snug text-stone-400">
+                  Modo foto completa: no se descarga la IA y la subida es casi
+                  instantánea.
+                </p>
+              )}
             </div>
 
             {photoUrl && !isProcessing ? (
