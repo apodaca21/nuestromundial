@@ -9,6 +9,7 @@ const PATH_TO_TAB: Record<string, AppTab> = {
   '/quiniela': 'quiniela',
   '/bingo': 'bingo',
   '/estampa': 'estampa',
+  '/calendario': 'calendario',
   '/admin': 'admin',
 }
 
@@ -17,6 +18,7 @@ const TAB_TO_PATH: Record<AppTab, string> = {
   quiniela: '/quiniela',
   bingo: '/bingo',
   estampa: '/estampa',
+  calendario: '/calendario',
   admin: '/admin',
 }
 
@@ -46,6 +48,11 @@ export const SECTION_META: Record<AppTab, SectionMeta> = {
     title: 'Mi Estampa — Nuestro Mundial 2026',
     description: 'Crea tu estampa Panini del Mundial 2026 con tu foto y plantilla oficial.',
     shareText: '¡Crea tu carta aquí!',
+  },
+  calendario: {
+    title: 'Calendario — Nuestro Mundial 2026',
+    description: 'Agrega los partidos del Mundial 2026 a Google Calendar o Apple Calendar.',
+    shareText: 'No te pierdas ningún partido del Mundial 2026',
   },
   admin: {
     title: 'Admin — Nuestro Mundial 2026',

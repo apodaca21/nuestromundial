@@ -27,6 +27,7 @@ export function PronosticosScreen({ match, oddsState }: PronosticosScreenProps) 
       />
 
       <CommunityThermometer
+        matchId={match.id}
         homeTeam={homeTeam}
         awayTeam={awayTeam}
         poll={{

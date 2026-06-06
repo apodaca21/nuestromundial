@@ -1,15 +1,23 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { ProgressBar } from '../../../components/ui/ProgressBar'
 import { TeamFlag } from '../../../components/ui/TeamFlag'
 import { VoteButton } from '../../../components/ui/VoteButton'
+import { useAuth } from '../../../context/AuthContext'
 import { formatPercent, formatVoteCount } from '../../../lib/format'
 import { sportCard } from '../../../lib/styles'
 import { getTeamColors } from '../../../lib/teamVisuals'
+import {
+  fetchUserPollVote,
+  saveUserPollVote,
+  type PollVoteSide,
+} from '../../../services/poll/pollVoteService'
 import type { CommunityPoll, Team } from '../../../types/match'
 
-type UserVote = 'home' | 'away' | null
+type UserVote = PollVoteSide | null
 
 interface CommunityThermometerProps {
+  matchId: string
   homeTeam: Team
   awayTeam: Team
   poll: CommunityPoll
@@ -17,13 +25,50 @@ interface CommunityThermometerProps {
 }
 
 export function CommunityThermometer({
+  matchId,
   homeTeam,
   awayTeam,
   poll,
   votingOpen = true,
 }: CommunityThermometerProps) {
+  const { user } = useAuth()
   const [userVote, setUserVote] = useState<UserVote>(null)
-  const showResults = !votingOpen || userVote !== null
+  const [voteLoaded, setVoteLoaded] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setVoteLoaded(false)
+    setUserVote(null)
+
+    if (!user?.id) {
+      setVoteLoaded(true)
+      return
+    }
+
+    void fetchUserPollVote(matchId, user.id).then((saved) => {
+      if (cancelled) return
+      setUserVote(saved)
+      setVoteLoaded(true)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [matchId, user?.id])
+
+  const handleVote = useCallback(
+    (side: PollVoteSide) => {
+      if (!votingOpen) return
+      setUserVote(side)
+      if (user?.id) {
+        const teamCode = side === 'home' ? homeTeam.code : awayTeam.code
+        void saveUserPollVote(matchId, user.id, side, teamCode)
+      }
+    },
+    [votingOpen, user?.id, matchId, homeTeam.code, awayTeam.code],
+  )
+
+  const showVoteButtons = votingOpen && userVote === null && voteLoaded
 
   const { homeVotesPercent, awayVotesPercent, totalVotes } = poll
   const homeColors = getTeamColors(homeTeam.code)
@@ -38,20 +83,30 @@ export function CommunityThermometer({
         ¿Quién ganará?
       </h2>
 
-      {!showResults ? (
+      {!voteLoaded && user ? (
+        <div className="flex min-h-[7.5rem] items-center justify-center gap-2 text-sm font-bold text-stone-400">
+          <Loader2 className="h-4 w-4 animate-spin text-[#6b00ff]" aria-hidden />
+          Cargando tu voto…
+        </div>
+      ) : showVoteButtons ? (
         <div className="flex flex-col gap-3">
           <VoteButton
             flagEmoji={homeTeam.flagEmoji}
             teamName={homeTeam.name}
             teamCode={homeTeam.code}
-            onClick={() => setUserVote('home')}
+            onClick={() => handleVote('home')}
           />
           <VoteButton
             flagEmoji={awayTeam.flagEmoji}
             teamName={awayTeam.name}
             teamCode={awayTeam.code}
-            onClick={() => setUserVote('away')}
+            onClick={() => handleVote('away')}
           />
+          {!user && (
+            <p className="text-center text-[10px] leading-snug text-stone-400">
+              Inicia sesión para guardar tu voto al volver
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -61,10 +116,10 @@ export function CommunityThermometer({
             </p>
           )}
           {userVote && (
-          <p className="text-center text-sm font-bold text-stone-600">
-            Tu voto:{' '}
-            <span className="font-black text-[#6b00ff]">{votedTeamName}</span>
-          </p>
+            <p className="text-center text-sm font-bold text-stone-600">
+              Tu voto:{' '}
+              <span className="font-black text-[#6b00ff]">{votedTeamName}</span>
+            </p>
           )}
 
           <div className="space-y-2">

@@ -20,7 +20,7 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <div className="min-h-[100dvh] w-full overflow-x-hidden bg-stone-200/50 md:bg-stone-200">
+      <div className="h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-stone-200/50 md:bg-stone-200">
         <AppShell />
       </div>
     </AuthProvider>

@@ -64,3 +64,31 @@ export function formatDayLabelFromKickoff(isoDate: string): string {
     timeZone: APP_DISPLAY_TIMEZONE,
   }).format(new Date(isoDate))
 }
+
+/** Hora local del dispositivo (sin fijar zona). */
+export function formatLocalMatchTime(isoDate: string): string {
+  return new Intl.DateTimeFormat('es-MX', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(isoDate))
+}
+
+/** Etiqueta de día en la zona horaria del dispositivo. */
+export function formatLocalDayLabel(isoDate: string): string {
+  return new Intl.DateTimeFormat('es-MX', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(isoDate))
+}
+
+/** Clave YYYY-MM-DD en hora local del dispositivo. */
+export function localDateKeyFromKickoff(isoDate: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(isoDate))
+}

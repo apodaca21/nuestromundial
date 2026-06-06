@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppTab } from '../types/match'
 import { isAdminUnlocked, subscribeAdminAccess } from '../lib/adminAccess'
 import { pathFromTab, tabFromPathname } from '../lib/appRoutes'
@@ -9,6 +9,7 @@ import { AdminScreen } from '../features/admin/AdminScreen'
 import { BingoPlaceholder } from '../features/bingo/BingoPlaceholder'
 import { PronosticosFlow } from '../features/pronosticos/PronosticosFlow'
 import { QuinielaPlaceholder } from '../features/quiniela/QuinielaPlaceholder'
+import { WorldCupCalendar } from '../features/calendar/WorldCupCalendar'
 import { StickerErrorBoundary } from '../features/sticker/StickerErrorBoundary'
 import { StickerGenerator } from '../features/sticker/StickerGenerator'
 import { BottomNavigation } from './BottomNavigation'
@@ -31,6 +32,11 @@ export function AppShell() {
   )
 
   const showTopBar = !(activeTab === 'pronosticos' && pronosticosInDetail)
+  const mainRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, left: 0 })
+  }, [activeTab])
 
   const navigateToTab = useCallback(
     (tab: AppTab) => {
@@ -85,7 +91,7 @@ export function AppShell() {
     <div className={appShell}>
       {showTopBar && <TopBar onAdminUnlocked={handleAdminUnlocked} />}
 
-      <main className={appMain}>
+      <main ref={mainRef} className={appMain} tabIndex={-1}>
         {activeTab === 'quiniela' && <QuinielaPlaceholder />}
         {activeTab === 'pronosticos' && (
           <PronosticosFlow onDetailOpenChange={setPronosticosInDetail} />
@@ -96,6 +102,7 @@ export function AppShell() {
             <StickerGenerator />
           </StickerErrorBoundary>
         )}
+        {activeTab === 'calendario' && <WorldCupCalendar />}
         {adminUnlocked && activeTab === 'admin' && (
           <AdminScreen onExit={() => navigateToTab('pronosticos')} />
         )}

@@ -114,3 +114,39 @@ create policy "results_write_auth"
   to authenticated
   using (true)
   with check (true);
+
+-- ========== Votos de pronósticos (termómetro comunitario) ==========
+
+create table if not exists public.match_poll_votes (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  match_id text not null,
+  side text not null check (side in ('home', 'away')),
+  team_code text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, match_id)
+);
+
+create index if not exists match_poll_votes_match_id_idx
+  on public.match_poll_votes (match_id);
+
+alter table public.match_poll_votes enable row level security;
+
+drop policy if exists "poll_votes_select_own" on public.match_poll_votes;
+create policy "poll_votes_select_own"
+  on public.match_poll_votes for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+drop policy if exists "poll_votes_insert_own" on public.match_poll_votes;
+create policy "poll_votes_insert_own"
+  on public.match_poll_votes for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+drop policy if exists "poll_votes_update_own" on public.match_poll_votes;
+create policy "poll_votes_update_own"
+  on public.match_poll_votes for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);

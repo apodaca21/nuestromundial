@@ -3,14 +3,15 @@ export const contentMaxWidth =
   'w-full max-w-[28rem] sm:max-w-lg md:max-w-xl lg:max-w-2xl'
 
 export const appShell = [
-  'mx-auto flex min-h-[100dvh] flex-col overflow-x-hidden bg-[#faf9f7]',
+  'mx-auto flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[#faf9f7]',
   contentMaxWidth,
-  'lg:min-h-[100dvh] lg:shadow-2xl lg:ring-1 lg:ring-stone-200/80',
+  'lg:shadow-2xl lg:ring-1 lg:ring-stone-200/80',
 ].join(' ')
 
-/** Espacio inferior = barra de tabs + home indicator iPhone */
+/** Contenedor con scroll — rueda en PC, deslizamiento en iOS */
 export const appMain = [
   'min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain',
+  '[-webkit-overflow-scrolling:touch] [touch-action:pan-y]',
   'pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]',
 ].join(' ')
 

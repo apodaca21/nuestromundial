@@ -62,6 +62,7 @@ export type AppTab =
   | 'pronosticos'
   | 'bingo'
   | 'estampa'
+  | 'calendario'
   | 'admin'
 
 export interface ScheduleDayGroup {

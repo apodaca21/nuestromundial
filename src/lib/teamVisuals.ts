@@ -48,6 +48,8 @@ export const TEAM_FLAG_ISO: Record<string, string> = {
   COD: 'cd',
   UZB: 'uz',
   COL: 'co',
+  POL: 'pl',
+  WAL: 'gb-wls',
 }
 
 /** Colores representativos de cada selección */
@@ -100,6 +102,8 @@ export const TEAM_COLORS: Record<string, { primary: string; secondary: string }>
   COD: { primary: '#007FFF', secondary: '#F7D618' },
   UZB: { primary: '#1EB53A', secondary: '#0099B5' },
   COL: { primary: '#FCD116', secondary: '#003893' },
+  POL: { primary: '#DC143C', secondary: '#FFFFFF' },
+  WAL: { primary: '#00AB39', secondary: '#FFFFFF' },
 }
 
 const DEFAULT_COLORS = { primary: '#6b00ff', secondary: '#ff004d' }
