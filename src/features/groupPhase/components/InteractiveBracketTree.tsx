@@ -472,8 +472,13 @@ export function InteractiveBracketTree({
 
     try {
       await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => window.setTimeout(resolve, 80)),
+          ),
+        )
       })
+      containerRef.current?.scrollTo(0, 0)
       const el = exportRef.current
       if (!el) throw new Error('No se encontró el bracket para exportar')
       await downloadBracketImage(el, champion.team.name)
@@ -558,10 +563,14 @@ export function InteractiveBracketTree({
       <div
         ref={exportRef}
         data-bracket-export
-        className="overflow-hidden rounded-2xl border border-stone-200 bg-gradient-to-br from-stone-100 via-white to-stone-100 px-1.5 py-2 shadow-inner sm:px-2 sm:py-3"
+        className={`rounded-2xl border border-stone-200 bg-gradient-to-br from-stone-100 via-white to-stone-100 px-1.5 py-2 shadow-inner sm:px-2 sm:py-3 ${
+          isCapturing ? 'overflow-visible' : 'overflow-hidden'
+        }`}
+        style={isCapturing ? { width: 'max-content', maxWidth: 'none' } : undefined}
       >
         <div
           ref={containerRef}
+          data-bracket-scroll
           className={`mx-auto w-full max-w-full ${
             isCapturing
               ? 'overflow-visible'
@@ -569,14 +578,15 @@ export function InteractiveBracketTree({
           }`}
           style={
             isCapturing
-              ? { height: 'auto' }
+              ? { height: 'auto', maxHeight: 'none' }
               : { height: viewportHeight }
           }
         >
           <div
+            data-bracket-capture
             style={
               isCapturing
-                ? { width: 'max-content', height: 'auto' }
+                ? { width: 'max-content', height: 'auto', overflow: 'visible' }
                 : scaledW > 0 && scaledH > 0
                   ? {
                       width: scaledW,
@@ -588,10 +598,11 @@ export function InteractiveBracketTree({
           >
             <div
               ref={innerRef}
+              data-bracket-capture
               className="pb-2"
               style={
                 isCapturing
-                  ? { width: 'max-content' }
+                  ? { width: 'max-content', transform: 'none' }
                   : {
                       transform: `scale(${displayScale})`,
                       transformOrigin: 'top left',
