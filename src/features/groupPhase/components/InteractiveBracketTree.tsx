@@ -178,7 +178,9 @@ function BracketMatchCell({
   )
 }
 
-function BracketRoundColumn({
+const BRACKET_GRID_ROWS = 8
+
+function BracketGridColumn({
   title,
   matchIds,
   state,
@@ -191,59 +193,69 @@ function BracketRoundColumn({
   onPick: (matchId: string, teamCode: string) => void
   slotHeight: number
 }) {
+  const rowSpan = BRACKET_GRID_ROWS / matchIds.length
+
   return (
-    <div className="flex shrink-0 flex-col items-center">
+    <div className="flex shrink-0 flex-col items-center self-stretch">
       <p className="mb-1 text-[6px] font-black uppercase tracking-widest text-stone-400">
         {title}
       </p>
-      <div className="flex flex-col" style={{ height: slotHeight }}>
-        {matchIds.map((matchId) => (
-          <div
-            key={matchId}
-            className="flex flex-1 items-center justify-center py-0.5"
-          >
-            <BracketMatchCell state={state} matchId={matchId} onPick={onPick} />
-          </div>
-        ))}
+      <div
+        className="grid w-full"
+        style={{
+          height: slotHeight,
+          gridTemplateRows: `repeat(${BRACKET_GRID_ROWS}, minmax(0, 1fr))`,
+        }}
+      >
+        {matchIds.map((matchId, index) => {
+          const startRow = index * rowSpan + 1
+          const endRow = startRow + rowSpan
+          return (
+            <div
+              key={matchId}
+              className="flex min-h-0 items-center justify-center py-px"
+              style={{ gridRow: `${startRow} / ${endRow}` }}
+            >
+              <BracketMatchCell state={state} matchId={matchId} onPick={onPick} />
+            </div>
+          )
+        })}
       </div>
     </div>
   )
 }
 
-function BracketPairColumn({
-  title,
-  pairs,
+function BracketFinalColumn({
+  matchId,
   state,
   onPick,
   slotHeight,
 }: {
-  title: string
-  pairs: string[][]
+  matchId: string
   state: BracketPickState
   onPick: (matchId: string, teamCode: string) => void
   slotHeight: number
 }) {
   return (
-    <div className="flex shrink-0 flex-col items-center">
-      <p className="mb-1 text-[6px] font-black uppercase tracking-widest text-stone-400">
-        {title}
+    <div className="flex shrink-0 flex-col items-center self-stretch">
+      <p className="mb-1 text-[6px] font-black uppercase tracking-widest text-amber-600">
+        Final
       </p>
-      <div className="flex flex-col" style={{ height: slotHeight }}>
-        {pairs.map((pair) => (
-          <div
-            key={pair.join('-')}
-            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-0.5"
-          >
-            {pair.map((matchId) => (
-              <BracketMatchCell
-                key={matchId}
-                state={state}
-                matchId={matchId}
-                onPick={onPick}
-              />
-            ))}
+      <div
+        className="grid w-full"
+        style={{
+          height: slotHeight,
+          gridTemplateRows: `repeat(${BRACKET_GRID_ROWS}, minmax(0, 1fr))`,
+        }}
+      >
+        <div
+          className="flex min-h-0 items-center justify-center py-px"
+          style={{ gridRow: `1 / ${BRACKET_GRID_ROWS + 1}` }}
+        >
+          <div className="rounded-xl border-2 border-amber-400/60 bg-amber-50/90 p-1 shadow-sm">
+            <BracketMatchCell state={state} matchId={matchId} onPick={onPick} />
           </div>
-        ))}
+        </div>
       </div>
     </div>
   )
@@ -268,7 +280,7 @@ function defaultUserZoom(): number {
 
 function defaultBracketHeight(): number {
   if (typeof window === 'undefined') return 360
-  return window.innerWidth < 640 ? 220 : 360
+  return window.innerWidth < 640 ? 300 : 360
 }
 
 function useBracketScale(
@@ -334,7 +346,7 @@ function isMobileViewport(): boolean {
 function scrollBracketView(
   container: HTMLDivElement,
   anchor: HTMLElement | null,
-  mode: 'center' | 'share',
+  mode: 'start' | 'share',
   smooth = true,
 ) {
   const behavior: ScrollBehavior = smooth ? 'smooth' : 'auto'
@@ -358,11 +370,7 @@ function scrollBracketView(
     return
   }
 
-  container.scrollTo({
-    left: Math.max(0, (container.scrollWidth - container.clientWidth) / 2),
-    top: Math.max(0, (container.scrollHeight - container.clientHeight) / 2),
-    behavior,
-  })
+  container.scrollTo({ left: 0, top: 0, behavior })
 }
 
 export function InteractiveBracketTree({
@@ -373,7 +381,7 @@ export function InteractiveBracketTree({
   const champion = getChampion(state)
   const exportRef = useRef<HTMLDivElement>(null)
   const shareAnchorRef = useRef<HTMLDivElement>(null)
-  const didAutoCenter = useRef(false)
+  const didAutoScroll = useRef(false)
   const [userZoom, setUserZoom] = useState(defaultUserZoom)
   const [bracketHeight, setBracketHeight] = useState(defaultBracketHeight)
   const [isCapturing, setIsCapturing] = useState(false)
@@ -396,12 +404,12 @@ export function InteractiveBracketTree({
 
   useEffect(() => {
     if (Object.keys(state.winners).length === 0) {
-      didAutoCenter.current = false
+      didAutoScroll.current = false
     }
   }, [state.winners])
 
-  const handleCenterView = useCallback(
-    (mode: 'center' | 'share' = 'share', smooth = true) => {
+  const handleScrollView = useCallback(
+    (mode: 'start' | 'share' = 'share', smooth = true) => {
       const container = containerRef.current
       if (!container) return
       scrollBracketView(container, shareAnchorRef.current, mode, smooth)
@@ -412,17 +420,17 @@ export function InteractiveBracketTree({
   useEffect(() => {
     if (!isMobileViewport()) return
     if (scaledW < 1 || scaledH < 1) return
-    if (didAutoCenter.current) return
+    if (didAutoScroll.current) return
 
     const raf = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        handleCenterView('center', false)
-        didAutoCenter.current = true
+        handleScrollView('start', false)
+        didAutoScroll.current = true
       })
     })
 
     return () => cancelAnimationFrame(raf)
-  }, [scaledW, scaledH, handleCenterView])
+  }, [scaledW, scaledH, handleScrollView])
 
   const handlePick = (matchId: string, teamCode: string) => {
     onStateChange(pickBracketWinner(state, matchId, teamCode))
@@ -483,19 +491,6 @@ export function InteractiveBracketTree({
   const displayScale = effectiveScale
   const viewportHeight = bracketHeight + 48
 
-  const leftR32Pairs = [
-    columns.left[0].slice(0, 2),
-    columns.left[0].slice(2, 4),
-    columns.left[0].slice(4, 6),
-    columns.left[0].slice(6, 8),
-  ]
-  const rightR32Pairs = [
-    columns.right[0].slice(0, 2),
-    columns.right[0].slice(2, 4),
-    columns.right[0].slice(4, 6),
-    columns.right[0].slice(6, 8),
-  ]
-
   return (
     <div className="space-y-3">
       <p className="text-center text-xs text-stone-500">
@@ -550,7 +545,7 @@ export function InteractiveBracketTree({
 
         <button
           type="button"
-          onClick={() => handleCenterView('share')}
+          onClick={() => handleScrollView('share')}
           className="flex h-9 shrink-0 items-center justify-center rounded-full border border-[#6b00ff]/30 bg-[#6b00ff]/8 px-3 text-[10px] font-black uppercase tracking-wide text-[#6b00ff] shadow-sm transition active:scale-95 sm:hidden"
           aria-label="Centrar vista del bracket"
         >
@@ -602,16 +597,16 @@ export function InteractiveBracketTree({
                     }
               }
             >
-              <div className="flex items-center gap-0.5 px-1">
-                <BracketPairColumn
+              <div className="flex items-stretch gap-0.5 px-1">
+                <BracketGridColumn
                   title="16avos"
-                  pairs={leftR32Pairs}
+                  matchIds={columns.left[0]}
                   state={state}
                   onPick={handlePick}
                   slotHeight={bracketHeight}
                 />
                 <Connector />
-                <BracketRoundColumn
+                <BracketGridColumn
                   title="8avos"
                   matchIds={columns.left[1]}
                   state={state}
@@ -621,9 +616,9 @@ export function InteractiveBracketTree({
                 <Connector />
                 <div
                   ref={shareAnchorRef}
-                  className="flex shrink-0 items-center gap-0.5 self-stretch"
+                  className="flex shrink-0 items-stretch gap-0.5 self-stretch"
                 >
-                  <BracketRoundColumn
+                  <BracketGridColumn
                     title="4tos"
                     matchIds={columns.left[2]}
                     state={state}
@@ -631,7 +626,7 @@ export function InteractiveBracketTree({
                     slotHeight={bracketHeight}
                   />
                   <Connector />
-                  <BracketRoundColumn
+                  <BracketGridColumn
                     title="Semis"
                     matchIds={columns.left[3]}
                     state={state}
@@ -639,22 +634,14 @@ export function InteractiveBracketTree({
                     slotHeight={bracketHeight}
                   />
                   <Connector />
-
-                  <div className="flex shrink-0 flex-col items-center self-stretch justify-center">
-                    <p className="mb-1 text-[6px] font-black uppercase tracking-widest text-amber-600">
-                      Final
-                    </p>
-                    <div className="rounded-xl border-2 border-amber-400/60 bg-amber-50/90 p-1 shadow-sm">
-                      <BracketMatchCell
-                        state={state}
-                        matchId={columns.finalId}
-                        onPick={handlePick}
-                      />
-                    </div>
-                  </div>
-
+                  <BracketFinalColumn
+                    matchId={columns.finalId}
+                    state={state}
+                    onPick={handlePick}
+                    slotHeight={bracketHeight}
+                  />
                   <Connector />
-                  <BracketRoundColumn
+                  <BracketGridColumn
                     title="Semis"
                     matchIds={columns.right[3]}
                     state={state}
@@ -662,7 +649,7 @@ export function InteractiveBracketTree({
                     slotHeight={bracketHeight}
                   />
                   <Connector />
-                  <BracketRoundColumn
+                  <BracketGridColumn
                     title="4tos"
                     matchIds={columns.right[2]}
                     state={state}
@@ -671,7 +658,7 @@ export function InteractiveBracketTree({
                   />
                 </div>
                 <Connector />
-                <BracketRoundColumn
+                <BracketGridColumn
                   title="8avos"
                   matchIds={columns.right[1]}
                   state={state}
@@ -679,9 +666,9 @@ export function InteractiveBracketTree({
                   slotHeight={bracketHeight}
                 />
                 <Connector />
-                <BracketPairColumn
+                <BracketGridColumn
                   title="16avos"
-                  pairs={rightR32Pairs}
+                  matchIds={columns.right[0]}
                   state={state}
                   onPick={handlePick}
                   slotHeight={bracketHeight}
@@ -773,8 +760,8 @@ export function InteractiveBracketTree({
       )}
 
       <p className="text-center text-[10px] leading-snug text-stone-400 sm:hidden">
-        En móvil la vista inicia centrada. Usa Centrar para ver semis y final
-        antes de compartir.
+        Empieza desde la izquierda en 16avos y desliza a la derecha. Usa Centrar
+        para ver semis y final antes de compartir.
       </p>
       <p className="hidden text-center text-[10px] leading-snug text-stone-400 sm:block">
         Vista completa al 100%. Acerca con + y desliza horizontal o vertical para
