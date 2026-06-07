@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Download, Link2, Loader2, Minus, Plus, RotateCcw } from 'lucide-react'
 import { TeamFlag } from '../../../components/ui/TeamFlag'
 import { BRACKET_SHARE_MESSAGE, bracketShareMessage } from '../../../lib/appRoutes'
@@ -327,6 +327,44 @@ function useBracketScale(
   return { containerRef, innerRef, effectiveScale, scaledW, scaledH }
 }
 
+function isMobileViewport(): boolean {
+  return typeof window !== 'undefined' && window.innerWidth < 640
+}
+
+function scrollBracketView(
+  container: HTMLDivElement,
+  anchor: HTMLElement | null,
+  mode: 'center' | 'share',
+  smooth = true,
+) {
+  const behavior: ScrollBehavior = smooth ? 'smooth' : 'auto'
+
+  if (mode === 'share' && anchor) {
+    const containerRect = container.getBoundingClientRect()
+    const anchorRect = anchor.getBoundingClientRect()
+    const left =
+      container.scrollLeft +
+      (anchorRect.left + anchorRect.width / 2) -
+      (containerRect.left + containerRect.width / 2)
+    const top =
+      container.scrollTop +
+      (anchorRect.top + anchorRect.height / 2) -
+      (containerRect.top + containerRect.height / 2)
+    container.scrollTo({
+      left: Math.max(0, left),
+      top: Math.max(0, top),
+      behavior,
+    })
+    return
+  }
+
+  container.scrollTo({
+    left: Math.max(0, (container.scrollWidth - container.clientWidth) / 2),
+    top: Math.max(0, (container.scrollHeight - container.clientHeight) / 2),
+    behavior,
+  })
+}
+
 export function InteractiveBracketTree({
   state,
   onStateChange,
@@ -334,6 +372,8 @@ export function InteractiveBracketTree({
   const columns = getBracketColumns(state)
   const champion = getChampion(state)
   const exportRef = useRef<HTMLDivElement>(null)
+  const shareAnchorRef = useRef<HTMLDivElement>(null)
+  const didAutoCenter = useRef(false)
   const [userZoom, setUserZoom] = useState(defaultUserZoom)
   const [bracketHeight, setBracketHeight] = useState(defaultBracketHeight)
   const [isCapturing, setIsCapturing] = useState(false)
@@ -353,6 +393,36 @@ export function InteractiveBracketTree({
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [])
+
+  useEffect(() => {
+    if (Object.keys(state.winners).length === 0) {
+      didAutoCenter.current = false
+    }
+  }, [state.winners])
+
+  const handleCenterView = useCallback(
+    (mode: 'center' | 'share' = 'share', smooth = true) => {
+      const container = containerRef.current
+      if (!container) return
+      scrollBracketView(container, shareAnchorRef.current, mode, smooth)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!isMobileViewport()) return
+    if (scaledW < 1 || scaledH < 1) return
+    if (didAutoCenter.current) return
+
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        handleCenterView('center', false)
+        didAutoCenter.current = true
+      })
+    })
+
+    return () => cancelAnimationFrame(raf)
+  }, [scaledW, scaledH, handleCenterView])
 
   const handlePick = (matchId: string, teamCode: string) => {
     onStateChange(pickBracketWinner(state, matchId, teamCode))
@@ -477,6 +547,15 @@ export function InteractiveBracketTree({
         >
           <RotateCcw className="h-3.5 w-3.5" />
         </button>
+
+        <button
+          type="button"
+          onClick={() => handleCenterView('share')}
+          className="flex h-9 shrink-0 items-center justify-center rounded-full border border-[#6b00ff]/30 bg-[#6b00ff]/8 px-3 text-[10px] font-black uppercase tracking-wide text-[#6b00ff] shadow-sm transition active:scale-95 sm:hidden"
+          aria-label="Centrar vista del bracket"
+        >
+          Centrar
+        </button>
       </div>
 
       <div
@@ -540,52 +619,57 @@ export function InteractiveBracketTree({
                   slotHeight={bracketHeight}
                 />
                 <Connector />
-                <BracketRoundColumn
-                  title="4tos"
-                  matchIds={columns.left[2]}
-                  state={state}
-                  onPick={handlePick}
-                  slotHeight={bracketHeight}
-                />
-                <Connector />
-                <BracketRoundColumn
-                  title="Semis"
-                  matchIds={columns.left[3]}
-                  state={state}
-                  onPick={handlePick}
-                  slotHeight={bracketHeight}
-                />
-                <Connector />
+                <div
+                  ref={shareAnchorRef}
+                  className="flex shrink-0 items-center gap-0.5 self-stretch"
+                >
+                  <BracketRoundColumn
+                    title="4tos"
+                    matchIds={columns.left[2]}
+                    state={state}
+                    onPick={handlePick}
+                    slotHeight={bracketHeight}
+                  />
+                  <Connector />
+                  <BracketRoundColumn
+                    title="Semis"
+                    matchIds={columns.left[3]}
+                    state={state}
+                    onPick={handlePick}
+                    slotHeight={bracketHeight}
+                  />
+                  <Connector />
 
-                <div className="flex shrink-0 flex-col items-center self-stretch justify-center">
-                  <p className="mb-1 text-[6px] font-black uppercase tracking-widest text-amber-600">
-                    Final
-                  </p>
-                  <div className="rounded-xl border-2 border-amber-400/60 bg-amber-50/90 p-1 shadow-sm">
-                    <BracketMatchCell
-                      state={state}
-                      matchId={columns.finalId}
-                      onPick={handlePick}
-                    />
+                  <div className="flex shrink-0 flex-col items-center self-stretch justify-center">
+                    <p className="mb-1 text-[6px] font-black uppercase tracking-widest text-amber-600">
+                      Final
+                    </p>
+                    <div className="rounded-xl border-2 border-amber-400/60 bg-amber-50/90 p-1 shadow-sm">
+                      <BracketMatchCell
+                        state={state}
+                        matchId={columns.finalId}
+                        onPick={handlePick}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <Connector />
-                <BracketRoundColumn
-                  title="Semis"
-                  matchIds={columns.right[3]}
-                  state={state}
-                  onPick={handlePick}
-                  slotHeight={bracketHeight}
-                />
-                <Connector />
-                <BracketRoundColumn
-                  title="4tos"
-                  matchIds={columns.right[2]}
-                  state={state}
-                  onPick={handlePick}
-                  slotHeight={bracketHeight}
-                />
+                  <Connector />
+                  <BracketRoundColumn
+                    title="Semis"
+                    matchIds={columns.right[3]}
+                    state={state}
+                    onPick={handlePick}
+                    slotHeight={bracketHeight}
+                  />
+                  <Connector />
+                  <BracketRoundColumn
+                    title="4tos"
+                    matchIds={columns.right[2]}
+                    state={state}
+                    onPick={handlePick}
+                    slotHeight={bracketHeight}
+                  />
+                </div>
                 <Connector />
                 <BracketRoundColumn
                   title="8avos"
@@ -688,7 +772,11 @@ export function InteractiveBracketTree({
         </p>
       )}
 
-      <p className="text-center text-[10px] leading-snug text-stone-400">
+      <p className="text-center text-[10px] leading-snug text-stone-400 sm:hidden">
+        En móvil la vista inicia centrada. Usa Centrar para ver semis y final
+        antes de compartir.
+      </p>
+      <p className="hidden text-center text-[10px] leading-snug text-stone-400 sm:block">
         Vista completa al 100%. Acerca con + y desliza horizontal o vertical para
         revisar los 16avos antes de la captura.
       </p>
