@@ -1,25 +1,11 @@
-import {
-  DndContext,
-  closestCenter,
-  type DragEndEvent,
-  KeyboardSensor,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
+import { useState } from 'react'
 import type { GroupStandings } from '../types'
 import {
   groupTeamId,
   reorderGroupTeams,
   type GroupLetter,
 } from '../groupData'
-import { SortableTeamCard } from './SortableTeamCard'
+import { GroupTeamRow } from './GroupTeamRow'
 
 const RANK_LABELS = ['1º', '2º', '3º', '4º']
 
@@ -28,85 +14,94 @@ interface GroupDragBoardProps {
   onGroupsChange: (groups: GroupStandings[]) => void
 }
 
-function GroupColumn({ entry }: { entry: GroupStandings }) {
+function GroupColumn({
+  entry,
+  selectedId,
+  onSelect,
+  onSwap,
+}: {
+  entry: GroupStandings
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+  onSwap: (group: GroupLetter, idA: string, idB: string) => void
+}) {
   const itemIds = entry.teams.map((team) => groupTeamId(entry.group, team.code))
+  const hasSelection = selectedId !== null && itemIds.includes(selectedId)
+
+  const handleTap = (teamId: string) => {
+    if (!selectedId) {
+      onSelect(teamId)
+      return
+    }
+    if (selectedId === teamId) {
+      onSelect(null)
+      return
+    }
+    onSwap(entry.group, selectedId, teamId)
+    onSelect(null)
+  }
 
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-sm font-black uppercase tracking-wide text-[#6b00ff]">
           Grupo {entry.group}
         </h3>
-        <span className="text-[10px] font-bold text-stone-400">Arrastra ↕</span>
+        <span className="text-right text-[10px] font-bold leading-snug text-stone-400">
+          {hasSelection ? 'Toca otro para intercambiar' : 'Toca dos equipos'}
+        </span>
       </div>
 
-      <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2">
-          {entry.teams.map((team, index) => (
-            <SortableTeamCard
-              key={groupTeamId(entry.group, team.code)}
-              id={groupTeamId(entry.group, team.code)}
+      <div className="space-y-1.5">
+        {entry.teams.map((team, index) => {
+          const id = groupTeamId(entry.group, team.code)
+          return (
+            <GroupTeamRow
+              key={id}
               team={team}
               rankLabel={RANK_LABELS[index]}
+              selected={selectedId === id}
+              swapTarget={hasSelection && selectedId !== id}
+              onTap={() => handleTap(id)}
             />
-          ))}
-        </div>
-      </SortableContext>
+          )
+        })}
+      </div>
     </div>
   )
 }
 
 export function GroupDragBoard({ groups, onGroupsChange }: GroupDragBoardProps) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 120, tolerance: 6 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  )
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const activeId = String(active.id)
-    const overId = String(over.id)
-    const activeGroup = activeId.split('-')[0] as GroupLetter
-    const overGroup = overId.split('-')[0] as GroupLetter
-    if (activeGroup !== overGroup) return
-
-    const groupEntry = groups.find((g) => g.group === activeGroup)
+  const handleSwap = (group: GroupLetter, idA: string, idB: string) => {
+    const groupEntry = groups.find((g) => g.group === group)
     if (!groupEntry) return
 
-    const ids = groupEntry.teams.map((team) =>
-      groupTeamId(activeGroup, team.code),
-    )
-    const oldIndex = ids.indexOf(activeId)
-    const newIndex = ids.indexOf(overId)
-    if (oldIndex < 0 || newIndex < 0) return
+    const ids = groupEntry.teams.map((team) => groupTeamId(group, team.code))
+    const indexA = ids.indexOf(idA)
+    const indexB = ids.indexOf(idB)
+    if (indexA < 0 || indexB < 0) return
 
     const nextIds = [...ids]
-    const [moved] = nextIds.splice(oldIndex, 1)
-    nextIds.splice(newIndex, 0, moved)
+    ;[nextIds[indexA], nextIds[indexB]] = [nextIds[indexB], nextIds[indexA]]
 
-    const teamCodes = nextIds.map((id) => id.slice(activeGroup.length + 1))
-    onGroupsChange(reorderGroupTeams(groups, activeGroup, teamCodes))
+    const teamCodes = nextIds.map((id) => id.slice(group.length + 1))
+    onGroupsChange(reorderGroupTeams(groups, group, teamCodes))
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {groups.map((entry) => (
-          <GroupColumn key={entry.group} entry={entry} />
-        ))}
-      </div>
-    </DndContext>
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {groups.map((entry) => (
+        <GroupColumn
+          key={entry.group}
+          entry={entry}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onSwap={handleSwap}
+        />
+      ))}
+    </div>
   )
 }
 
@@ -117,7 +112,8 @@ export function GroupLegend() {
       directo.{' '}
       <span className="font-black text-stone-600">3º</span> va a la zona de
       supervivencia. <span className="font-black text-stone-600">4º</span> queda
-      fuera.
+      fuera. Toca un equipo y luego otro del mismo grupo para intercambiar
+      posiciones.
     </p>
   )
 }

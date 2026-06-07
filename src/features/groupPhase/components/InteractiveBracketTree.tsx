@@ -261,6 +261,16 @@ const ZOOM_MIN = 0.75
 const ZOOM_MAX = 2.5
 const ZOOM_STEP = 0.1
 
+function defaultUserZoom(): number {
+  if (typeof window === 'undefined') return 1
+  return window.innerWidth < 640 ? 1.85 : 1
+}
+
+function defaultBracketHeight(): number {
+  if (typeof window === 'undefined') return 360
+  return window.innerWidth < 640 ? 220 : 360
+}
+
 function useBracketScale(deps: unknown, userZoom: number, isCapturing: boolean) {
   const containerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
@@ -274,14 +284,14 @@ function useBracketScale(deps: unknown, userZoom: number, isCapturing: boolean) 
 
     const update = () => {
       const cw = container.clientWidth
-      const ch = container.clientHeight
       const iw = inner.offsetWidth
       const ih = inner.offsetHeight
       if (iw === 0 || ih === 0) return
 
       setNaturalSize({ w: iw, h: ih })
-      const next = Math.min(cw / iw, ch / ih, 1)
-      setFitScale(Number(next.toFixed(3)))
+      // Ajustar al ancho disponible; la altura la define el contenido escalado.
+      const next = cw / iw
+      setFitScale(Number(Math.min(Math.max(next, 0.2), 1).toFixed(3)))
     }
 
     update()
@@ -305,13 +315,21 @@ export function InteractiveBracketTree({
   const columns = getBracketColumns(state)
   const champion = getChampion(state)
   const exportRef = useRef<HTMLDivElement>(null)
-  const [userZoom, setUserZoom] = useState(1)
+  const [userZoom, setUserZoom] = useState(defaultUserZoom)
+  const [bracketHeight, setBracketHeight] = useState(defaultBracketHeight)
   const [isCapturing, setIsCapturing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
   const { containerRef, innerRef, effectiveScale, scaledW, scaledH, naturalSize } =
-    useBracketScale(state.winners, userZoom, isCapturing)
+    useBracketScale([state.winners, bracketHeight], userZoom, isCapturing)
+
+  useEffect(() => {
+    const update = () => setBracketHeight(defaultBracketHeight())
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
 
   const handlePick = (matchId: string, teamCode: string) => {
     onStateChange(pickBracketWinner(state, matchId, teamCode))
@@ -371,7 +389,6 @@ export function InteractiveBracketTree({
 
   const displayScale = isCapturing ? 1 : effectiveScale
 
-  const bracketHeight = 360
   const leftR32Pairs = [
     columns.left[0].slice(0, 2),
     columns.left[0].slice(2, 4),
@@ -441,7 +458,7 @@ export function InteractiveBracketTree({
       <div
         ref={exportRef}
         data-bracket-export
-        className="overflow-hidden rounded-2xl border border-stone-200 bg-gradient-to-br from-stone-100 via-white to-stone-100 px-2 py-3 shadow-inner"
+        className="overflow-hidden rounded-2xl border border-stone-200 bg-gradient-to-br from-stone-100 via-white to-stone-100 px-1.5 py-2 shadow-inner sm:px-2 sm:py-3"
       >
         <div
           ref={containerRef}
@@ -450,17 +467,22 @@ export function InteractiveBracketTree({
               ? 'overflow-visible'
               : 'touch-pan-x touch-pan-y overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch]'
           }`}
-          style={isCapturing ? { height: 'auto' } : { height: 'min(52dvh, 380px)' }}
+          style={
+            isCapturing
+              ? { height: 'auto' }
+              : scaledH > 0
+                ? { height: scaledH + 4, maxHeight: '58dvh' }
+                : { height: 'auto', maxHeight: '58dvh' }
+          }
         >
           <div
-            className="mx-auto"
+            className="mx-auto flex justify-center"
             style={
               isCapturing
                 ? { width: 'max-content', height: 'auto' }
                 : {
                     width: scaledW > 0 ? scaledW : 'max-content',
                     height: scaledH > 0 ? scaledH : 'auto',
-                    minWidth: '100%',
                   }
             }
           >
@@ -564,7 +586,7 @@ export function InteractiveBracketTree({
         {champion ? (
           <div
             data-bracket-champion
-            className="mt-3 border-t border-stone-200/80 pt-3 text-center"
+            className="mt-1.5 border-t border-stone-200/80 pt-2 text-center sm:mt-3 sm:pt-3"
           >
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-400">
               Campeón Mundial 2026
@@ -594,7 +616,7 @@ export function InteractiveBracketTree({
 
         <p
           data-bracket-watermark
-          className="mt-3 text-center text-[9px] font-black uppercase tracking-[0.28em] text-stone-400"
+          className="mt-1.5 text-center text-[9px] font-black uppercase tracking-[0.28em] text-stone-400 sm:mt-3"
         >
           @apo.webs
         </p>
