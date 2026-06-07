@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Download, Link2, Loader2, Minus, Plus, RotateCcw } from 'lucide-react'
 import { TeamFlag } from '../../../components/ui/TeamFlag'
 import { BRACKET_SHARE_MESSAGE, bracketShareMessage } from '../../../lib/appRoutes'
@@ -181,7 +181,19 @@ function BracketMatchCell({
 const BRACKET_GRID_ROWS = 8
 /** 2 equipos (1.65rem c/u) + gap + bordes — altura mínima por fila del grid. */
 const BRACKET_ROW_MIN_PX = 58
-const BRACKET_SLOT_HEIGHT = BRACKET_ROW_MIN_PX * BRACKET_GRID_ROWS
+/** ~medio cuadrito de equipo entre cada fila (16avos, 8vos, etc.). */
+const BRACKET_ROW_GAP_PX = 12
+const BRACKET_SLOT_HEIGHT =
+  BRACKET_ROW_MIN_PX * BRACKET_GRID_ROWS +
+  BRACKET_ROW_GAP_PX * (BRACKET_GRID_ROWS - 1)
+
+function bracketGridStyle(slotHeight: number): CSSProperties {
+  return {
+    height: slotHeight,
+    gridTemplateRows: `repeat(${BRACKET_GRID_ROWS}, ${BRACKET_ROW_MIN_PX}px)`,
+    rowGap: `${BRACKET_ROW_GAP_PX}px`,
+  }
+}
 
 function BracketGridColumn({
   title,
@@ -203,13 +215,7 @@ function BracketGridColumn({
       <p className="mb-1 text-[6px] font-black uppercase tracking-widest text-stone-400">
         {title}
       </p>
-      <div
-        className="grid w-full"
-        style={{
-          height: slotHeight,
-          gridTemplateRows: `repeat(${BRACKET_GRID_ROWS}, ${BRACKET_ROW_MIN_PX}px)`,
-        }}
-      >
+      <div className="grid w-full" style={bracketGridStyle(slotHeight)}>
         {matchIds.map((matchId, index) => {
           const startRow = index * rowSpan + 1
           const endRow = startRow + rowSpan
@@ -244,13 +250,7 @@ function BracketFinalColumn({
       <p className="mb-1 text-[6px] font-black uppercase tracking-widest text-amber-600">
         Final
       </p>
-      <div
-        className="grid w-full"
-        style={{
-          height: slotHeight,
-          gridTemplateRows: `repeat(${BRACKET_GRID_ROWS}, ${BRACKET_ROW_MIN_PX}px)`,
-        }}
-      >
+      <div className="grid w-full" style={bracketGridStyle(slotHeight)}>
         <div
           className="flex items-center justify-center overflow-hidden"
           style={{ gridRow: `1 / ${BRACKET_GRID_ROWS + 1}` }}
