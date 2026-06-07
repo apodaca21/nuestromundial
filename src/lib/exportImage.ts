@@ -6,7 +6,7 @@ export function exportPixelRatio(): number {
 }
 
 // Caché global: teamCode → data URL
-const flagCache = new Map<string, string>()
+export const flagCache = new Map<string, string>()
 const FLAG_EXPORT_WIDTH = 160
 
 export async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {

@@ -1,5 +1,4 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, createContext, type CSSProperties } from 'react'
-import { flushSync } from 'react-dom'
 import { Download, Loader2, Minus, Plus, RotateCcw } from 'lucide-react'
 import { TeamFlag } from '../../../components/ui/TeamFlag'
 import {
@@ -9,8 +8,9 @@ import {
   resolveBracketMatch,
   type BracketPickState,
 } from '../bracketEngine'
-import { downloadBracketImage, collectBracketTeamCodes } from '../exportBracket'
-import { prepareFlagsForExport, preloadTeamFlags } from '../../../lib/exportImage'
+import { downloadBracketImageCanvas } from '../exportBracketCanvas'
+import { collectBracketTeamCodes } from '../exportBracket'
+import { preloadTeamFlags } from '../../../lib/exportImage'
 import type { ClassifiedTeam } from '../types'
 
 interface InteractiveBracketTreeProps {
@@ -392,7 +392,7 @@ export function InteractiveBracketTree({
   const didAutoScroll = useRef(false)
   const [userZoom, setUserZoom] = useState(defaultUserZoom)
   const [bracketHeight, setBracketHeight] = useState(defaultBracketHeight)
-  const [isCapturing, setIsCapturing] = useState(false)
+  const [isCapturing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const { containerRef, innerRef, effectiveScale, scaledW, scaledH } =
@@ -463,7 +463,7 @@ export function InteractiveBracketTree({
 
   const handleDownload = async () => {
     if (!champion) {
-      setExportError('Elige un campeón en la final antes de compartir')
+      setExportError('Elige un campeón en la final antes de generar la imagen')
       return
     }
 
@@ -472,27 +472,7 @@ export function InteractiveBracketTree({
 
     try {
       setIsExporting(true)
-
-      const el = exportRef.current
-      if (!el) throw new Error('No se encontró el bracket para exportar')
-
-      // 1. Descargar TODAS las banderas como data URLs (via fetch, sin CORS taint).
-      await prepareFlagsForExport(teamCodes)
-
-      // 2. Activar modo captura → React re-renderiza con data URLs en cada <img>.
-      flushSync(() => {
-        setIsCapturing(true)
-      })
-
-      // 3. Esperar a que el navegador pinte el nuevo layout.
-      await new Promise<void>((resolve) => {
-        window.setTimeout(() => {
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-        }, 150)
-      })
-
-      containerRef.current?.scrollTo(0, 0)
-      await downloadBracketImage(el, champion.team.name, teamCodes)
+      await downloadBracketImageCanvas(state, teamCodes)
     } catch (err) {
       const msg =
         err instanceof Error
@@ -501,7 +481,6 @@ export function InteractiveBracketTree({
       setExportError(msg)
       console.error('[InteractiveBracketTree] export', err)
     } finally {
-      setIsCapturing(false)
       setIsExporting(false)
     }
   }
@@ -755,12 +734,12 @@ export function InteractiveBracketTree({
             {isExporting ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                Generando PNG...
+                Generando imagen...
               </>
             ) : (
               <>
                 <Download className="h-5 w-5" aria-hidden />
-                Compartir mi bracket
+                Generar imagen
               </>
             )}
           </button>
