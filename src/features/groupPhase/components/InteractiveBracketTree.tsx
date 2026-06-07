@@ -271,40 +271,60 @@ function defaultBracketHeight(): number {
   return window.innerWidth < 640 ? 220 : 360
 }
 
-function useBracketScale(deps: unknown, userZoom: number, isCapturing: boolean) {
+function useBracketScale(
+  contentKey: string,
+  userZoom: number,
+  isCapturing: boolean,
+) {
   const containerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const [fitScale, setFitScale] = useState(1)
   const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 })
 
   useEffect(() => {
+    if (isCapturing) return
+
     const container = containerRef.current
     const inner = innerRef.current
     if (!container || !inner) return
 
-    const update = () => {
-      const cw = container.clientWidth
-      const iw = inner.scrollWidth
-      const ih = inner.scrollHeight
-      if (iw === 0 || ih === 0) return
+    let raf = 0
 
-      setNaturalSize({ w: iw, h: ih })
-      const fitW = cw / iw
-      setFitScale(Number(Math.min(Math.max(fitW, 0.25), 1).toFixed(3)))
+    const measure = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const cw = container.clientWidth
+        const iw = inner.scrollWidth
+        const ih = inner.scrollHeight
+        if (iw < 1 || ih < 1 || cw < 1) return
+
+        const nextFit = Number(
+          Math.min(Math.max(cw / iw, 0.25), 1).toFixed(3),
+        )
+
+        setNaturalSize((prev) =>
+          prev.w === iw && prev.h === ih ? prev : { w: iw, h: ih },
+        )
+        setFitScale((prev) => (prev === nextFit ? prev : nextFit))
+      })
     }
 
-    update()
-    const observer = new ResizeObserver(update)
-    observer.observe(container)
-    observer.observe(inner)
-    return () => observer.disconnect()
-  }, [deps, userZoom, isCapturing])
+    measure()
+    window.addEventListener('resize', measure)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', measure)
+    }
+  }, [contentKey, isCapturing])
 
   const effectiveScale = isCapturing ? 1 : Number((fitScale * userZoom).toFixed(3))
-  const scaledW = naturalSize.w > 0 ? Math.ceil(naturalSize.w * effectiveScale) : 0
-  const scaledH = naturalSize.h > 0 ? Math.ceil(naturalSize.h * effectiveScale) : 0
+  const scaledW =
+    naturalSize.w > 0 ? Math.ceil(naturalSize.w * effectiveScale) : 0
+  const scaledH =
+    naturalSize.h > 0 ? Math.ceil(naturalSize.h * effectiveScale) : 0
 
-  return { containerRef, innerRef, effectiveScale, scaledW, scaledH, naturalSize }
+  return { containerRef, innerRef, effectiveScale, scaledW, scaledH }
 }
 
 export function InteractiveBracketTree({
@@ -321,7 +341,11 @@ export function InteractiveBracketTree({
   const [exportError, setExportError] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
   const { containerRef, innerRef, effectiveScale, scaledW, scaledH } =
-    useBracketScale([state.winners, bracketHeight], userZoom, isCapturing)
+    useBracketScale(
+      `${bracketHeight}:${Object.keys(state.winners).length}`,
+      userZoom,
+      isCapturing,
+    )
 
   useEffect(() => {
     const update = () => setBracketHeight(defaultBracketHeight())
@@ -387,8 +411,7 @@ export function InteractiveBracketTree({
   }
 
   const displayScale = effectiveScale
-
-  const scrollHeight = scaledH > 0 ? scaledH + 8 : bracketHeight + 40
+  const viewportHeight = bracketHeight + 48
 
   const leftR32Pairs = [
     columns.left[0].slice(0, 2),
@@ -471,19 +494,20 @@ export function InteractiveBracketTree({
           style={
             isCapturing
               ? { height: 'auto' }
-              : { height: scrollHeight, minHeight: scaledH > 0 ? scaledH + 4 : 220 }
+              : { height: viewportHeight }
           }
         >
           <div
             style={
               isCapturing
                 ? { width: 'max-content', height: 'auto' }
-                : {
-                    width: scaledW > 0 ? scaledW : 'max-content',
-                    height: scaledH > 0 ? scaledH : 'auto',
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }
+                : scaledW > 0 && scaledH > 0
+                  ? {
+                      width: scaledW,
+                      height: scaledH,
+                      overflow: 'hidden',
+                    }
+                  : { width: 'max-content', height: 'auto' }
             }
           >
             <div
