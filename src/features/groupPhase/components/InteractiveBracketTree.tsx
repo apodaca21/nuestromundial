@@ -9,7 +9,6 @@ import {
   resolveBracketMatch,
   type BracketPickState,
 } from '../bracketEngine'
-import { getFlagUrl } from '../../../lib/teamVisuals'
 import { downloadBracketImage, collectBracketTeamCodes } from '../exportBracket'
 import { prepareFlagsForExport, preloadTeamFlags } from '../../../lib/exportImage'
 import type { ClassifiedTeam } from '../types'
@@ -46,7 +45,7 @@ function BracketFlag({
       width={BRACKET_FLAG_W}
       height={BRACKET_FLAG_H}
       loading="eager"
-      preferCachedSrc={preferCachedSrc}
+      useCached={preferCachedSrc}
       className={`shrink-0 shadow-none transition ${dimmed ? 'grayscale opacity-45' : ''} ${className}`}
     />
   )
@@ -477,17 +476,19 @@ export function InteractiveBracketTree({
       const el = exportRef.current
       if (!el) throw new Error('No se encontró el bracket para exportar')
 
-      // Precarga con el layout normal (banderas ya visibles en pantalla).
-      await prepareFlagsForExport(el, teamCodes)
+      // 1. Descargar TODAS las banderas como data URLs (via fetch, sin CORS taint).
+      await prepareFlagsForExport(teamCodes)
 
+      // 2. Activar modo captura → React re-renderiza con data URLs en cada <img>.
       flushSync(() => {
         setIsCapturing(true)
       })
 
+      // 3. Esperar a que el navegador pinte el nuevo layout.
       await new Promise<void>((resolve) => {
         window.setTimeout(() => {
           requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-        }, 300)
+        }, 150)
       })
 
       containerRef.current?.scrollTo(0, 0)
@@ -579,24 +580,6 @@ export function InteractiveBracketTree({
         style={isCapturing ? { width: 'max-content', maxWidth: 'none' } : undefined}
       >
         <BracketExportFlagsContext.Provider value={isCapturing}>
-        <div
-          aria-hidden
-          className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
-        >
-          {bracketTeamCodes.map((code) => (
-            <img
-              key={`flag-preload-${code}`}
-              src={getFlagUrl(code, 160)}
-              alt=""
-              crossOrigin="anonymous"
-              data-team-code={code}
-              loading="eager"
-              decoding="async"
-              width={1}
-              height={1}
-            />
-          ))}
-        </div>
         <div
           ref={containerRef}
           data-bracket-scroll
@@ -737,7 +720,7 @@ export function InteractiveBracketTree({
                   width={72}
                   height={48}
                   loading="eager"
-                  preferCachedSrc={isCapturing}
+                  useCached={isCapturing}
                 />
               </div>
               <div className="flex w-[4.5rem] shrink-0 flex-col items-center justify-center border-l border-amber-300/60 bg-amber-100/80 px-1 py-2">

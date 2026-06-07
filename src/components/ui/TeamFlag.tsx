@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getCachedTeamFlagSrc } from '../../lib/exportImage'
+import { getCachedFlagDataUrl } from '../../lib/exportImage'
 import { getFlagUrl, getTeamColors } from '../../lib/teamVisuals'
 
 interface TeamFlagProps {
@@ -10,7 +10,8 @@ interface TeamFlagProps {
   loading?: 'lazy' | 'eager'
   width?: number
   height?: number
-  preferCachedSrc?: boolean
+  /** Cuando true, usa el data URL cacheado en lugar de la URL de red */
+  useCached?: boolean
 }
 
 const sizeMap = {
@@ -28,18 +29,19 @@ export function TeamFlag({
   loading = 'lazy',
   width,
   height,
-  preferCachedSrc = false,
+  useCached = false,
 }: TeamFlagProps) {
   const [failed, setFailed] = useState(false)
   const { img, w, h } = sizeMap[size]
   const displayW = width ?? w
   const displayH = height ?? h
   const colors = getTeamColors(teamCode)
-  const cachedSrc = preferCachedSrc ? getCachedTeamFlagSrc(teamCode) : undefined
+
+  const cachedSrc = useCached ? getCachedFlagDataUrl(teamCode) : undefined
   const src = cachedSrc ?? getFlagUrl(teamCode, img)
   const isDataUrl = src.startsWith('data:')
 
-  if (failed) {
+  if (failed && !isDataUrl) {
     return (
       <span
         className={`inline-flex shrink-0 items-center justify-center rounded-sm border border-stone-200/80 text-[7px] font-black uppercase leading-none shadow-sm ${className}`}

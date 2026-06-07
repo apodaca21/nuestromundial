@@ -3,7 +3,6 @@ import { bracketShareMessage } from '../../lib/appRoutes'
 import {
   dataUrlToPngBlob,
   exportPixelRatio,
-  getCachedTeamFlagSrc,
   inlineImagesForExport,
   savePngBlob,
 } from '../../lib/exportImage'
@@ -38,11 +37,7 @@ export async function downloadBracketImage(
   const saved: Array<{ node: HTMLElement; overflow: string; height: string }> = []
   const stashStyle = (node: HTMLElement | null) => {
     if (!node) return
-    saved.push({
-      node,
-      overflow: node.style.overflow,
-      height: node.style.height,
-    })
+    saved.push({ node, overflow: node.style.overflow, height: node.style.height })
     node.style.overflow = 'visible'
     if (node.hasAttribute('data-bracket-scroll')) {
       node.style.height = 'auto'
@@ -58,12 +53,11 @@ export async function downloadBracketImage(
   let restoreImages = () => {}
 
   try {
+    // Incrustar data URLs en el DOM antes de capturar
     restoreImages = await inlineImagesForExport(element, teamCodes)
 
     await new Promise<void>((resolve) => {
-      window.setTimeout(() => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-      }, 80)
+      window.setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve())), 80)
     })
 
     const width = Math.ceil(element.scrollWidth)
@@ -84,18 +78,6 @@ export async function downloadBracketImage(
         width: `${width}px`,
         height: `${height}px`,
         maxWidth: 'none',
-      },
-      onImageErrorHandler: (event) => {
-        const target =
-          typeof event === 'object' && event && 'target' in event
-            ? (event.target as HTMLImageElement | null)
-            : null
-        const code = target?.getAttribute('data-team-code')
-        const cached = code ? getCachedTeamFlagSrc(code) : undefined
-        if (cached && target) {
-          target.srcset = ''
-          target.src = cached
-        }
       },
     })
 
