@@ -3,6 +3,7 @@ import { bracketShareMessage } from '../../lib/appRoutes'
 import {
   dataUrlToPngBlob,
   exportPixelRatio,
+  getCachedTeamFlagSrc,
   inlineImagesForExport,
   savePngBlob,
 } from '../../lib/exportImage'
@@ -83,6 +84,18 @@ export async function downloadBracketImage(
         width: `${width}px`,
         height: `${height}px`,
         maxWidth: 'none',
+      },
+      onImageErrorHandler: (event) => {
+        const target =
+          typeof event === 'object' && event && 'target' in event
+            ? (event.target as HTMLImageElement | null)
+            : null
+        const code = target?.getAttribute('data-team-code')
+        const cached = code ? getCachedTeamFlagSrc(code) : undefined
+        if (cached && target) {
+          target.srcset = ''
+          target.src = cached
+        }
       },
     })
 

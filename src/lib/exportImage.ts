@@ -85,39 +85,72 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
   })
 }
 
+function rasterizeLoadedImage(img: HTMLImageElement): string | null {
+  if (!img.complete || img.naturalWidth === 0) return null
+
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(img, 0, 0)
+    return canvas.toDataURL('image/png')
+  } catch {
+    return null
+  }
+}
+
+function findLoadedFlagImg(teamCode: string, root?: ParentNode | null): HTMLImageElement | null {
+  const scope = root ?? document
+  for (const img of scope.querySelectorAll<HTMLImageElement>(
+    `img[data-team-code="${teamCode}"]`,
+  )) {
+    if (img.complete && img.naturalWidth > 0) return img
+  }
+  return null
+}
+
 async function loadCrossOriginImageAsDataUrl(src: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const image = new Image()
     image.crossOrigin = 'anonymous'
     image.onload = () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = image.naturalWidth
-      canvas.height = image.naturalHeight
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        reject(new Error('Canvas no disponible'))
-        return
-      }
-      ctx.drawImage(image, 0, 0)
-      resolve(canvas.toDataURL('image/png'))
+      const dataUrl = rasterizeLoadedImage(image)
+      if (dataUrl) resolve(dataUrl)
+      else reject(new Error(`No se pudo rasterizar ${src}`))
     }
     image.onerror = () => reject(new Error(`No se pudo cargar ${src}`))
     image.src = src
   })
 }
 
-async function fetchFlagDataUrl(teamCode: string): Promise<string> {
+async function fetchFlagDataUrl(teamCode: string, root?: ParentNode | null): Promise<string> {
   const cached = flagDataUrlByTeam.get(teamCode)
   if (cached) return cached
 
+  const domImg = findLoadedFlagImg(teamCode, root)
+  if (domImg) {
+    const fromDom = rasterizeLoadedImage(domImg)
+    if (fromDom) {
+      flagDataUrlByTeam.set(teamCode, fromDom)
+      return fromDom
+    }
+  }
+
   const src = getFlagUrl(teamCode, FLAG_EXPORT_WIDTH)
   let dataUrl: string
+
   try {
-    const response = await fetch(src, { mode: 'cors', credentials: 'omit' })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    dataUrl = await blobToDataUrl(await response.blob())
-  } catch {
     dataUrl = await loadCrossOriginImageAsDataUrl(src)
+  } catch {
+    try {
+      const response = await fetch(src, { mode: 'cors', credentials: 'omit' })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      dataUrl = await blobToDataUrl(await response.blob())
+    } catch {
+      throw new Error(`No se pudo cargar bandera ${teamCode}`)
+    }
   }
 
   flagDataUrlByTeam.set(teamCode, dataUrl)
@@ -128,32 +161,84 @@ export function getCachedTeamFlagSrc(teamCode: string): string | undefined {
   return flagDataUrlByTeam.get(teamCode)
 }
 
+/** Copia banderas ya visibles en pantalla a la caché (mismo origen en canvas). */
+export function seedFlagCacheFromDom(root: ParentNode, teamCodes: string[]): void {
+  const needed = new Set(teamCodes)
+
+  for (const img of root.querySelectorAll<HTMLImageElement>('img[data-team-code]')) {
+    const teamCode = img.getAttribute('data-team-code')
+    if (!teamCode || !needed.has(teamCode) || flagDataUrlByTeam.has(teamCode)) continue
+
+    const dataUrl = rasterizeLoadedImage(img)
+    if (dataUrl) flagDataUrlByTeam.set(teamCode, dataUrl)
+  }
+}
+
 /** Precarga banderas por código ISO (w160) en caché. */
-export async function preloadTeamFlags(teamCodes: string[]): Promise<void> {
+export async function preloadTeamFlags(
+  teamCodes: string[],
+  root?: ParentNode | null,
+): Promise<void> {
   const unique = [...new Set(teamCodes)]
-  const batchSize = 6
+  const batchSize = 4
 
   for (let i = 0; i < unique.length; i += batchSize) {
     const batch = unique.slice(i, i + batchSize)
-    await Promise.all(batch.map((code) => fetchFlagDataUrl(code).catch(() => undefined)))
+    await Promise.all(
+      batch.map((code) => fetchFlagDataUrl(code, root).catch(() => undefined)),
+    )
   }
 }
 
 /** Espera a que todas las banderas estén en caché (reintentos). */
-export async function ensureTeamFlagsCached(teamCodes: string[]): Promise<void> {
+export async function ensureTeamFlagsCached(
+  teamCodes: string[],
+  root?: ParentNode | null,
+): Promise<void> {
   const unique = [...new Set(teamCodes)]
 
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    await preloadTeamFlags(unique.filter((code) => !flagDataUrlByTeam.has(code)))
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    if (root) seedFlagCacheFromDom(root, unique)
+    await preloadTeamFlags(
+      unique.filter((code) => !flagDataUrlByTeam.has(code)),
+      root,
+    )
     if (unique.every((code) => flagDataUrlByTeam.has(code))) return
     await new Promise<void>((resolve) => {
-      window.setTimeout(resolve, 150 * (attempt + 1))
+      window.setTimeout(resolve, 200 * (attempt + 1))
     })
   }
 }
 
-async function ensureTeamFlagsReady(teamCodes: string[]): Promise<void> {
-  await ensureTeamFlagsCached(teamCodes)
+/**
+ * Prepara caché ANTES de cambiar el layout de captura.
+ * Usa las banderas ya pintadas en pantalla para evitar CORS en el primer intento.
+ */
+export async function prepareFlagsForExport(
+  root: HTMLElement,
+  teamCodes: string[],
+): Promise<void> {
+  const unique = [...new Set(teamCodes)]
+  const deadline = Date.now() + 18000
+
+  while (Date.now() < deadline) {
+    seedFlagCacheFromDom(root, unique)
+    await preloadTeamFlags(
+      unique.filter((code) => !flagDataUrlByTeam.has(code)),
+      root,
+    )
+
+    if (unique.every((code) => flagDataUrlByTeam.has(code))) return
+
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 300)
+    })
+  }
+
+  const missing = unique.filter((code) => !flagDataUrlByTeam.has(code))
+  throw new Error(
+    `No se pudieron cargar ${missing.length} bandera(s). Revisa tu conexión e intenta de nuevo.`,
+  )
 }
 
 async function waitForImagesReady(images: HTMLImageElement[]): Promise<void> {
@@ -177,9 +262,7 @@ async function waitForImagesReady(images: HTMLImageElement[]): Promise<void> {
   })
 }
 
-function applyTeamFlagsFromCache(root: HTMLElement): HTMLImageElement[] {
-  const touched: HTMLImageElement[] = []
-
+function applyTeamFlagsFromCache(root: HTMLElement): void {
   for (const img of root.querySelectorAll<HTMLImageElement>('img[data-team-code]')) {
     const teamCode = img.getAttribute('data-team-code')
     if (!teamCode) continue
@@ -187,12 +270,12 @@ function applyTeamFlagsFromCache(root: HTMLElement): HTMLImageElement[] {
     const dataUrl = flagDataUrlByTeam.get(teamCode)
     if (!dataUrl) continue
 
-    img.src = dataUrl
+    if (img.src !== dataUrl) {
+      img.srcset = ''
+      img.src = dataUrl
+    }
     img.removeAttribute('crossorigin')
-    touched.push(img)
   }
-
-  return touched
 }
 
 function brokenFlagImages(root: HTMLElement): HTMLImageElement[] {
@@ -212,7 +295,7 @@ export async function inlineImagesForExport(
     crossOrigin: string | null
   }> = []
 
-  await ensureTeamFlagsReady(teamCodes)
+  await ensureTeamFlagsCached(teamCodes, root)
 
   for (const img of root.querySelectorAll<HTMLImageElement>('img[data-team-code]')) {
     restores.push({
@@ -222,13 +305,16 @@ export async function inlineImagesForExport(
     })
   }
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
     applyTeamFlagsFromCache(root)
-    await waitForImagesReady(Array.from(root.querySelectorAll('img')))
+    await waitForImagesReady(
+      Array.from(root.querySelectorAll<HTMLImageElement>('img[data-team-code]')),
+    )
 
     const broken = brokenFlagImages(root)
     if (broken.length === 0) break
 
+    seedFlagCacheFromDom(root, teamCodes)
     const missingCodes = [
       ...new Set(
         broken
@@ -236,11 +322,16 @@ export async function inlineImagesForExport(
           .filter((code): code is string => Boolean(code)),
       ),
     ]
-    await preloadTeamFlags(missingCodes)
+    await preloadTeamFlags(missingCodes, root)
+  }
+
+  if (brokenFlagImages(root).length > 0) {
+    throw new Error('Las banderas aún no están listas. Intenta de nuevo.')
   }
 
   return () => {
     for (const entry of restores) {
+      entry.img.srcset = ''
       entry.img.src = entry.src
       if (entry.crossOrigin) entry.img.setAttribute('crossorigin', entry.crossOrigin)
       else entry.img.removeAttribute('crossorigin')

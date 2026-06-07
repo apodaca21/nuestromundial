@@ -9,8 +9,9 @@ import {
   resolveBracketMatch,
   type BracketPickState,
 } from '../bracketEngine'
+import { getFlagUrl } from '../../../lib/teamVisuals'
 import { downloadBracketImage, collectBracketTeamCodes } from '../exportBracket'
-import { ensureTeamFlagsCached, preloadTeamFlags } from '../../../lib/exportImage'
+import { prepareFlagsForExport, preloadTeamFlags } from '../../../lib/exportImage'
 import type { ClassifiedTeam } from '../types'
 
 interface InteractiveBracketTreeProps {
@@ -472,7 +473,12 @@ export function InteractiveBracketTree({
 
     try {
       setIsExporting(true)
-      await ensureTeamFlagsCached(teamCodes)
+
+      const el = exportRef.current
+      if (!el) throw new Error('No se encontró el bracket para exportar')
+
+      // Precarga con el layout normal (banderas ya visibles en pantalla).
+      await prepareFlagsForExport(el, teamCodes)
 
       flushSync(() => {
         setIsCapturing(true)
@@ -481,12 +487,10 @@ export function InteractiveBracketTree({
       await new Promise<void>((resolve) => {
         window.setTimeout(() => {
           requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-        }, 250)
+        }, 300)
       })
 
       containerRef.current?.scrollTo(0, 0)
-      const el = exportRef.current
-      if (!el) throw new Error('No se encontró el bracket para exportar')
       await downloadBracketImage(el, champion.team.name, teamCodes)
     } catch (err) {
       const msg =
@@ -575,6 +579,24 @@ export function InteractiveBracketTree({
         style={isCapturing ? { width: 'max-content', maxWidth: 'none' } : undefined}
       >
         <BracketExportFlagsContext.Provider value={isCapturing}>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
+        >
+          {bracketTeamCodes.map((code) => (
+            <img
+              key={`flag-preload-${code}`}
+              src={getFlagUrl(code, 160)}
+              alt=""
+              crossOrigin="anonymous"
+              data-team-code={code}
+              loading="eager"
+              decoding="async"
+              width={1}
+              height={1}
+            />
+          ))}
+        </div>
         <div
           ref={containerRef}
           data-bracket-scroll
