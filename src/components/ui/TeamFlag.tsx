@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getCachedTeamFlagSrc } from '../../lib/exportImage'
 import { getFlagUrl, getTeamColors } from '../../lib/teamVisuals'
 
 interface TeamFlagProps {
@@ -9,6 +10,7 @@ interface TeamFlagProps {
   loading?: 'lazy' | 'eager'
   width?: number
   height?: number
+  preferCachedSrc?: boolean
 }
 
 const sizeMap = {
@@ -26,12 +28,16 @@ export function TeamFlag({
   loading = 'lazy',
   width,
   height,
+  preferCachedSrc = false,
 }: TeamFlagProps) {
   const [failed, setFailed] = useState(false)
   const { img, w, h } = sizeMap[size]
   const displayW = width ?? w
   const displayH = height ?? h
   const colors = getTeamColors(teamCode)
+  const cachedSrc = preferCachedSrc ? getCachedTeamFlagSrc(teamCode) : undefined
+  const src = cachedSrc ?? getFlagUrl(teamCode, img)
+  const isDataUrl = src.startsWith('data:')
 
   if (failed) {
     return (
@@ -54,13 +60,13 @@ export function TeamFlag({
 
   return (
     <img
-      src={getFlagUrl(teamCode, img)}
+      src={src}
       alt=""
       width={displayW}
       height={displayH}
       loading={loading}
       decoding="async"
-      crossOrigin="anonymous"
+      crossOrigin={isDataUrl ? undefined : 'anonymous'}
       data-team-code={teamCode}
       onError={() => setFailed(true)}
       className={`block shrink-0 rounded-sm border border-stone-200/80 object-cover shadow-sm ${className}`}

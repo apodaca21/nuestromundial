@@ -4,7 +4,6 @@ import {
   dataUrlToPngBlob,
   exportPixelRatio,
   inlineImagesForExport,
-  preloadTeamFlags,
   savePngBlob,
 } from '../../lib/exportImage'
 import { getChampion, type BracketPickState } from './bracketEngine'
@@ -30,7 +29,6 @@ export async function downloadBracketImage(
   teamCodes: string[],
 ): Promise<void> {
   await document.fonts.ready
-  await preloadTeamFlags(teamCodes)
 
   const scrollContainer = element.querySelector(
     '[data-bracket-scroll]',
@@ -59,10 +57,12 @@ export async function downloadBracketImage(
   let restoreImages = () => {}
 
   try {
-    restoreImages = await inlineImagesForExport(element)
+    restoreImages = await inlineImagesForExport(element, teamCodes)
 
     await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+      window.setTimeout(() => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      }, 80)
     })
 
     const width = Math.ceil(element.scrollWidth)

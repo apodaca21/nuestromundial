@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, createContext, type CSSProperties } from 'react'
 import { flushSync } from 'react-dom'
 import { Download, Loader2, Minus, Plus, RotateCcw } from 'lucide-react'
 import { TeamFlag } from '../../../components/ui/TeamFlag'
@@ -10,7 +10,7 @@ import {
   type BracketPickState,
 } from '../bracketEngine'
 import { downloadBracketImage, collectBracketTeamCodes } from '../exportBracket'
-import { preloadTeamFlags } from '../../../lib/exportImage'
+import { ensureTeamFlagsCached, preloadTeamFlags } from '../../../lib/exportImage'
 import type { ClassifiedTeam } from '../types'
 
 interface InteractiveBracketTreeProps {
@@ -24,6 +24,8 @@ const CELL_H = 'h-[1.65rem]'
 const BRACKET_FLAG_W = 34
 const BRACKET_FLAG_H = 23
 
+const BracketExportFlagsContext = createContext(false)
+
 function BracketFlag({
   team,
   dimmed = false,
@@ -33,6 +35,8 @@ function BracketFlag({
   dimmed?: boolean
   className?: string
 }) {
+  const preferCachedSrc = useContext(BracketExportFlagsContext)
+
   return (
     <TeamFlag
       teamCode={team.code}
@@ -41,6 +45,7 @@ function BracketFlag({
       width={BRACKET_FLAG_W}
       height={BRACKET_FLAG_H}
       loading="eager"
+      preferCachedSrc={preferCachedSrc}
       className={`shrink-0 shadow-none transition ${dimmed ? 'grayscale opacity-45' : ''} ${className}`}
     />
   )
@@ -440,9 +445,8 @@ export function InteractiveBracketTree({
   )
 
   useEffect(() => {
-    if (!champion) return
     void preloadTeamFlags(bracketTeamCodes)
-  }, [champion, bracketTeamCodes])
+  }, [bracketTeamCodes])
 
   const handlePick = (matchId: string, teamCode: string) => {
     onStateChange(pickBracketWinner(state, matchId, teamCode))
@@ -467,17 +471,17 @@ export function InteractiveBracketTree({
     const teamCodes = collectBracketTeamCodes(state)
 
     try {
-      await preloadTeamFlags(teamCodes)
+      setIsExporting(true)
+      await ensureTeamFlagsCached(teamCodes)
 
       flushSync(() => {
-        setIsExporting(true)
         setIsCapturing(true)
       })
 
       await new Promise<void>((resolve) => {
         window.setTimeout(() => {
           requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-        }, 150)
+        }, 250)
       })
 
       containerRef.current?.scrollTo(0, 0)
@@ -570,6 +574,7 @@ export function InteractiveBracketTree({
         }`}
         style={isCapturing ? { width: 'max-content', maxWidth: 'none' } : undefined}
       >
+        <BracketExportFlagsContext.Provider value={isCapturing}>
         <div
           ref={containerRef}
           data-bracket-scroll
@@ -710,6 +715,7 @@ export function InteractiveBracketTree({
                   width={72}
                   height={48}
                   loading="eager"
+                  preferCachedSrc={isCapturing}
                 />
               </div>
               <div className="flex w-[4.5rem] shrink-0 flex-col items-center justify-center border-l border-amber-300/60 bg-amber-100/80 px-1 py-2">
@@ -730,6 +736,7 @@ export function InteractiveBracketTree({
         >
           @apo.webs
         </p>
+        </BracketExportFlagsContext.Provider>
       </div>
 
       {champion ? (
