@@ -41,7 +41,9 @@ export function TeamFlag({
   const src = cachedSrc ?? getFlagUrl(teamCode, img)
   const isDataUrl = src.startsWith('data:')
 
-  if (failed && !isDataUrl) {
+  // En modo captura (useCached=true) NUNCA mostrar el fallback: necesitamos el <img>
+  // para que inlineImagesForExport pueda encontrarlo por data-team-code.
+  if (failed && !useCached) {
     return (
       <span
         className={`inline-flex shrink-0 items-center justify-center rounded-sm border border-stone-200/80 text-[7px] font-black uppercase leading-none shadow-sm ${className}`}

@@ -81,10 +81,6 @@ export async function downloadBracketImage(
       },
     }
 
-    // Primera pasada: calienta la caché interna de html-to-image y la del navegador.
-    // La segunda pasada usa esa caché y siempre sale con todas las banderas.
-    await toPng(element, { ...toPngOptions, pixelRatio: 1 }).catch(() => undefined)
-
     const dataUrl = await toPng(element, toPngOptions)
 
     const blob = await dataUrlToPngBlob(dataUrl)

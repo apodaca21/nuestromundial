@@ -178,18 +178,22 @@ export async function prepareFlagsForExport(teamCodes: string[]): Promise<void> 
 
 /**
  * Reemplaza los src de todas las <img data-team-code> dentro de root por data URLs.
+ * Espera el decode completo de cada imagen antes de retornar.
  * Retorna una función para revertir los cambios.
  */
 export async function inlineImagesForExport(
   root: HTMLElement,
   teamCodes: string[],
 ): Promise<() => void> {
-  // Asegurar que la caché esté lista (ya debería estarlo, pero por si acaso)
+  // Asegurar que la caché esté lista
   await prepareFlagsForExport(teamCodes)
+
+  const imgs = Array.from(root.querySelectorAll<HTMLImageElement>('img[data-team-code]'))
 
   const restores: Array<{ img: HTMLImageElement; src: string; crossOrigin: string | null }> = []
 
-  for (const img of root.querySelectorAll<HTMLImageElement>('img[data-team-code]')) {
+  // Aplicar data URLs a todos los imgs
+  for (const img of imgs) {
     const teamCode = img.getAttribute('data-team-code')
     const dataUrl = teamCode ? flagCache.get(teamCode) : undefined
 
@@ -206,7 +210,12 @@ export async function inlineImagesForExport(
     }
   }
 
-  // Esperar a que el navegador refleje los cambios
+  // Esperar el decode completo de TODAS las imágenes antes de que html-to-image corra.
+  // Sin esto, el navegador móvil puede no haber decodificado las imágenes al momento
+  // de clonar el DOM, dejando cuadros en blanco.
+  await Promise.all(imgs.map((img) => img.decode().catch(() => undefined)))
+
+  // Doble rAF adicional para asegurar el paint
   await new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
   })
