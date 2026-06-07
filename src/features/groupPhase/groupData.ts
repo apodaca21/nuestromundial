@@ -83,6 +83,24 @@ export function reorderGroupTeams(
   })
 }
 
+export function swapThirdPlaces(
+  order: ThirdPlaceEntry[],
+  idA: string,
+  idB: string,
+): ThirdPlaceEntry[] {
+  const indexA = order.findIndex(
+    (entry) => groupTeamId(entry.group, entry.team.code) === idA,
+  )
+  const indexB = order.findIndex(
+    (entry) => groupTeamId(entry.group, entry.team.code) === idB,
+  )
+  if (indexA < 0 || indexB < 0 || indexA === indexB) return order
+
+  const next = [...order]
+  ;[next[indexA], next[indexB]] = [next[indexB], next[indexA]]
+  return next
+}
+
 export function reorderThirdPlaces(
   order: ThirdPlaceEntry[],
   activeId: string,

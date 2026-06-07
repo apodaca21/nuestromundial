@@ -284,14 +284,13 @@ function useBracketScale(deps: unknown, userZoom: number, isCapturing: boolean) 
 
     const update = () => {
       const cw = container.clientWidth
-      const iw = inner.offsetWidth
-      const ih = inner.offsetHeight
+      const iw = inner.scrollWidth
+      const ih = inner.scrollHeight
       if (iw === 0 || ih === 0) return
 
       setNaturalSize({ w: iw, h: ih })
-      // Ajustar al ancho disponible; la altura la define el contenido escalado.
-      const next = cw / iw
-      setFitScale(Number(Math.min(Math.max(next, 0.2), 1).toFixed(3)))
+      const fitW = cw / iw
+      setFitScale(Number(Math.min(Math.max(fitW, 0.25), 1).toFixed(3)))
     }
 
     update()
@@ -301,7 +300,7 @@ function useBracketScale(deps: unknown, userZoom: number, isCapturing: boolean) 
     return () => observer.disconnect()
   }, [deps, userZoom, isCapturing])
 
-  const effectiveScale = Number((fitScale * userZoom).toFixed(3))
+  const effectiveScale = isCapturing ? 1 : Number((fitScale * userZoom).toFixed(3))
   const scaledW = naturalSize.w > 0 ? Math.ceil(naturalSize.w * effectiveScale) : 0
   const scaledH = naturalSize.h > 0 ? Math.ceil(naturalSize.h * effectiveScale) : 0
 
@@ -321,7 +320,7 @@ export function InteractiveBracketTree({
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
-  const { containerRef, innerRef, effectiveScale, scaledW, scaledH, naturalSize } =
+  const { containerRef, innerRef, effectiveScale, scaledW, scaledH } =
     useBracketScale([state.winners, bracketHeight], userZoom, isCapturing)
 
   useEffect(() => {
@@ -387,7 +386,9 @@ export function InteractiveBracketTree({
     }
   }
 
-  const displayScale = isCapturing ? 1 : effectiveScale
+  const displayScale = effectiveScale
+
+  const scrollHeight = scaledH > 0 ? scaledH + 8 : bracketHeight + 40
 
   const leftR32Pairs = [
     columns.left[0].slice(0, 2),
@@ -470,19 +471,18 @@ export function InteractiveBracketTree({
           style={
             isCapturing
               ? { height: 'auto' }
-              : scaledH > 0
-                ? { height: scaledH + 4, maxHeight: '58dvh' }
-                : { height: 'auto', maxHeight: '58dvh' }
+              : { height: scrollHeight, minHeight: scaledH > 0 ? scaledH + 4 : 220 }
           }
         >
           <div
-            className="mx-auto flex justify-center"
             style={
               isCapturing
                 ? { width: 'max-content', height: 'auto' }
                 : {
                     width: scaledW > 0 ? scaledW : 'max-content',
                     height: scaledH > 0 ? scaledH : 'auto',
+                    position: 'relative',
+                    overflow: 'hidden',
                   }
             }
           >
@@ -495,7 +495,7 @@ export function InteractiveBracketTree({
                   : {
                       transform: `scale(${displayScale})`,
                       transformOrigin: 'top left',
-                      width: naturalSize.w > 0 ? naturalSize.w : 'max-content',
+                      width: 'max-content',
                     }
               }
             >
