@@ -96,7 +96,7 @@ export const TEAM_COLORS: Record<string, { primary: string; secondary: string }>
   JOR: { primary: '#007A3D', secondary: '#CE1126' },
   GHA: { primary: '#EF3340', secondary: '#FCD116' },
   PAN: { primary: '#005293', secondary: '#D21034' },
-  ENG: { primary: '#FFFFFF', secondary: '#CE1126' },
+  ENG: { primary: '#CE1126', secondary: '#FFFFFF' },
   CRO: { primary: '#171796', secondary: '#FF0000' },
   POR: { primary: '#006600', secondary: '#FF0000' },
   COD: { primary: '#007FFF', secondary: '#F7D618' },
@@ -108,9 +108,18 @@ export const TEAM_COLORS: Record<string, { primary: string; secondary: string }>
 
 const DEFAULT_COLORS = { primary: '#6b00ff', secondary: '#ff004d' }
 
+/** flagcdn.com solo sirve ciertos anchos (w56, w120, etc. responden 404). */
+const FLAGCDN_WIDTHS = [20, 40, 80, 160, 320, 640, 1280, 2560] as const
+
+function snapFlagCdnWidth(requested: number): number {
+  const match = FLAGCDN_WIDTHS.find((width) => width >= requested)
+  return match ?? FLAGCDN_WIDTHS[FLAGCDN_WIDTHS.length - 1]
+}
+
 export function getFlagUrl(teamCode: string, width = 80): string {
   const iso = TEAM_FLAG_ISO[teamCode] ?? teamCode.slice(0, 2).toLowerCase()
-  return `https://flagcdn.com/w${width}/${iso}.png`
+  const w = snapFlagCdnWidth(width)
+  return `https://flagcdn.com/w${w}/${iso}.png`
 }
 
 export function getTeamColors(teamCode: string) {

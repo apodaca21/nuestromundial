@@ -8,7 +8,7 @@ import { useStoreSubscription } from '../hooks/useStoreSubscription'
 import { AdminScreen } from '../features/admin/AdminScreen'
 import { BingoPlaceholder } from '../features/bingo/BingoPlaceholder'
 import { PronosticosFlow } from '../features/pronosticos/PronosticosFlow'
-import { QuinielaPlaceholder } from '../features/quiniela/QuinielaPlaceholder'
+import { GroupPhaseFlow } from '../features/groupPhase/GroupPhaseFlow'
 import { WorldCupCalendar } from '../features/calendar/WorldCupCalendar'
 import { StickerErrorBoundary } from '../features/sticker/StickerErrorBoundary'
 import { StickerGenerator } from '../features/sticker/StickerGenerator'
@@ -92,7 +92,7 @@ export function AppShell() {
       {showTopBar && <TopBar onAdminUnlocked={handleAdminUnlocked} />}
 
       <main ref={mainRef} className={appMain} tabIndex={-1}>
-        {activeTab === 'quiniela' && <QuinielaPlaceholder />}
+        {activeTab === 'quiniela' && <GroupPhaseFlow />}
         {activeTab === 'pronosticos' && (
           <PronosticosFlow onDetailOpenChange={setPronosticosInDetail} />
         )}

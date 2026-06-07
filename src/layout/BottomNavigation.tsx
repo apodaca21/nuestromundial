@@ -11,9 +11,9 @@ interface BottomNavigationProps {
 }
 
 const allPublicTabs: { id: AppTab; label: string; icon: LucideIcon }[] = [
-  { id: 'quiniela', label: 'Quiniela', icon: ClipboardList },
   { id: 'pronosticos', label: 'Pronósticos', icon: TrendingUp },
   { id: 'calendario', label: 'Calendario', icon: CalendarDays },
+  { id: 'quiniela', label: 'Bracket', icon: ClipboardList },
   { id: 'bingo', label: 'Bingo', icon: Grid3x3 },
   { id: 'estampa', label: 'Mi Estampa', icon: Image },
 ]

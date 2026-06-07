@@ -7,6 +7,7 @@ const PATH_TO_TAB: Record<string, AppTab> = {
   '/': 'pronosticos',
   '/pronosticos': 'pronosticos',
   '/quiniela': 'quiniela',
+  '/bracket': 'quiniela',
   '/bingo': 'bingo',
   '/estampa': 'estampa',
   '/calendario': 'calendario',
@@ -15,7 +16,7 @@ const PATH_TO_TAB: Record<string, AppTab> = {
 
 const TAB_TO_PATH: Record<AppTab, string> = {
   pronosticos: '/pronosticos',
-  quiniela: '/quiniela',
+  quiniela: '/bracket',
   bingo: '/bingo',
   estampa: '/estampa',
   calendario: '/calendario',
@@ -35,9 +36,9 @@ export const SECTION_META: Record<AppTab, SectionMeta> = {
     shareText: 'Mira los pronósticos del Mundial 2026',
   },
   quiniela: {
-    title: 'Quiniela — Nuestro Mundial 2026',
-    description: 'Quiniela del Mundial 2026 con tu comunidad.',
-    shareText: 'Únete a la quiniela del Mundial 2026',
+    title: 'Bracket — Nuestro Mundial 2026',
+    description: 'Simula el cuadro eliminatorio del Mundial 2026 y elige quién avanza.',
+    shareText: 'Arma tu bracket del Mundial 2026',
   },
   bingo: {
     title: 'Bingo — Nuestro Mundial 2026',
@@ -81,3 +82,11 @@ export function shareMessageForTab(tab: AppTab): string {
 }
 
 export const ESTAMPA_SHARE_MESSAGE = shareMessageForTab('estampa')
+
+export const BRACKET_SHARE_URL = `${SITE_ORIGIN}/bracket`
+
+export function bracketShareMessage(championName: string): string {
+  return `¡${championName} campeón en mi bracket del Mundial 2026! 👉 ${BRACKET_SHARE_URL}`
+}
+
+export const BRACKET_SHARE_MESSAGE = shareMessageForTab('quiniela')
