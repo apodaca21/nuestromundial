@@ -4,18 +4,33 @@ import {
   dataUrlToPngBlob,
   exportPixelRatio,
   inlineImagesForExport,
+  preloadTeamFlags,
   savePngBlob,
 } from '../../lib/exportImage'
+import { getChampion, type BracketPickState } from './bracketEngine'
 
 function slugify(value: string): string {
   return value.trim().replace(/\s+/g, '-').toLowerCase() || 'campeon'
 }
 
+export function collectBracketTeamCodes(state: BracketPickState): string[] {
+  const codes = new Set<string>()
+  for (const match of state.r32Matches) {
+    codes.add(match.home.team.code)
+    codes.add(match.away.team.code)
+  }
+  const champion = getChampion(state)
+  if (champion) codes.add(champion.team.code)
+  return [...codes]
+}
+
 export async function downloadBracketImage(
   element: HTMLElement,
   championName: string,
+  teamCodes: string[],
 ): Promise<void> {
   await document.fonts.ready
+  await preloadTeamFlags(teamCodes)
 
   const scrollContainer = element.querySelector(
     '[data-bracket-scroll]',

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { flushSync } from 'react-dom'
 import { Download, Loader2, Minus, Plus, RotateCcw } from 'lucide-react'
 import { TeamFlag } from '../../../components/ui/TeamFlag'
 import {
@@ -8,7 +9,8 @@ import {
   resolveBracketMatch,
   type BracketPickState,
 } from '../bracketEngine'
-import { downloadBracketImage } from '../exportBracket'
+import { downloadBracketImage, collectBracketTeamCodes } from '../exportBracket'
+import { preloadTeamFlags } from '../../../lib/exportImage'
 import type { ClassifiedTeam } from '../types'
 
 interface InteractiveBracketTreeProps {
@@ -432,6 +434,16 @@ export function InteractiveBracketTree({
     return () => cancelAnimationFrame(raf)
   }, [scaledW, scaledH, handleScrollView])
 
+  const bracketTeamCodes = useMemo(
+    () => collectBracketTeamCodes(state),
+    [state.r32Matches, state.winners],
+  )
+
+  useEffect(() => {
+    if (!champion) return
+    void preloadTeamFlags(bracketTeamCodes)
+  }, [champion, bracketTeamCodes])
+
   const handlePick = (matchId: string, teamCode: string) => {
     onStateChange(pickBracketWinner(state, matchId, teamCode))
   }
@@ -452,21 +464,26 @@ export function InteractiveBracketTree({
     }
 
     setExportError(null)
-    setIsExporting(true)
-    setIsCapturing(true)
+    const teamCodes = collectBracketTeamCodes(state)
 
     try {
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() =>
-          requestAnimationFrame(() =>
-            requestAnimationFrame(() => window.setTimeout(resolve, 80)),
-          ),
-        )
+      await preloadTeamFlags(teamCodes)
+
+      flushSync(() => {
+        setIsExporting(true)
+        setIsCapturing(true)
       })
+
+      await new Promise<void>((resolve) => {
+        window.setTimeout(() => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        }, 150)
+      })
+
       containerRef.current?.scrollTo(0, 0)
       const el = exportRef.current
       if (!el) throw new Error('No se encontró el bracket para exportar')
-      await downloadBracketImage(el, champion.team.name)
+      await downloadBracketImage(el, champion.team.name, teamCodes)
     } catch (err) {
       const msg =
         err instanceof Error

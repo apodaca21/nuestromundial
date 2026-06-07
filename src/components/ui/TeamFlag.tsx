@@ -61,6 +61,7 @@ export function TeamFlag({
       loading={loading}
       decoding="async"
       crossOrigin="anonymous"
+      data-team-code={teamCode}
       onError={() => setFailed(true)}
       className={`block shrink-0 rounded-sm border border-stone-200/80 object-cover shadow-sm ${className}`}
       style={{ width: displayW, height: displayH, maxWidth: 'none' }}

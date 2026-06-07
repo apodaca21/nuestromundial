@@ -1,7 +1,12 @@
+import { getFlagUrl } from './teamVisuals'
+
 export function exportPixelRatio(): number {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
   return isMobile ? 2 : Math.min(2.5, window.devicePixelRatio || 2)
 }
+
+const flagDataUrlCache = new Map<string, string>()
+const FLAG_EXPORT_WIDTH = 160
 
 export async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   const blob = await new Promise<Blob | null>((resolve) => {
@@ -102,43 +107,91 @@ async function loadCrossOriginImageAsDataUrl(src: string): Promise<string> {
 }
 
 async function imageSrcToDataUrl(src: string): Promise<string> {
+  const cached = flagDataUrlCache.get(src)
+  if (cached) return cached
+
+  let dataUrl: string
   try {
     const response = await fetch(src, { mode: 'cors', credentials: 'omit' })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    return blobToDataUrl(await response.blob())
+    dataUrl = await blobToDataUrl(await response.blob())
   } catch {
-    return loadCrossOriginImageAsDataUrl(src)
+    dataUrl = await loadCrossOriginImageAsDataUrl(src)
   }
+
+  flagDataUrlCache.set(src, dataUrl)
+  return dataUrl
+}
+
+/** Precarga banderas en caché antes de exportar (evita PNG sin flags en el 1er intento). */
+export async function preloadTeamFlags(teamCodes: string[]): Promise<void> {
+  const urls = [...new Set(teamCodes.map((code) => getFlagUrl(code, FLAG_EXPORT_WIDTH)))]
+  await Promise.all(urls.map((url) => imageSrcToDataUrl(url).catch(() => undefined)))
+}
+
+function resolveExportFlagUrl(img: HTMLImageElement): string | null {
+  const src = img.currentSrc || img.src
+  if (src && src.startsWith('data:')) return null
+  if (src && src.includes('flagcdn.com')) return src
+
+  const teamCode = img.getAttribute('data-team-code')
+  if (teamCode) return getFlagUrl(teamCode, FLAG_EXPORT_WIDTH)
+
+  return src && src.length > 8 ? src : null
+}
+
+async function waitForImagesReady(images: HTMLImageElement[]): Promise<void> {
+  await Promise.all(
+    images.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          if (img.complete && img.naturalWidth > 0) {
+            resolve()
+            return
+          }
+          const done = () => resolve()
+          img.addEventListener('load', done, { once: true })
+          img.addEventListener('error', done, { once: true })
+        }),
+    ),
+  )
+  await Promise.all(images.map((img) => img.decode().catch(() => undefined)))
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  })
 }
 
 /** Convierte imágenes externas a data URL para que html-to-image las incluya en el PNG. */
 export async function inlineImagesForExport(root: HTMLElement): Promise<() => void> {
+  const images = Array.from(root.querySelectorAll('img'))
   const restores: Array<{
     img: HTMLImageElement
     src: string
     crossOrigin: string | null
   }> = []
 
-  await Promise.all(
-    Array.from(root.querySelectorAll('img')).map(async (img) => {
-      const original = img.currentSrc || img.src
-      if (!original || original.startsWith('data:')) return
+  const urlEntries = images
+    .map((img) => ({ img, url: resolveExportFlagUrl(img) }))
+    .filter((entry): entry is { img: HTMLImageElement; url: string } => Boolean(entry.url))
 
-      try {
-        const dataUrl = await imageSrcToDataUrl(original)
-        restores.push({
-          img,
-          src: original,
-          crossOrigin: img.getAttribute('crossorigin'),
-        })
-        img.src = dataUrl
-        img.removeAttribute('crossorigin')
-        await img.decode().catch(() => undefined)
-      } catch {
-        // TeamFlag muestra fallback con código ISO si falla la carga
-      }
-    }),
-  )
+  const uniqueUrls = [...new Set(urlEntries.map((entry) => entry.url))]
+  await Promise.all(uniqueUrls.map((url) => imageSrcToDataUrl(url).catch(() => undefined)))
+
+  for (const { img, url } of urlEntries) {
+    const dataUrl = flagDataUrlCache.get(url)
+    if (!dataUrl) continue
+
+    const original = img.currentSrc || img.src
+    restores.push({
+      img,
+      src: original,
+      crossOrigin: img.getAttribute('crossorigin'),
+    })
+    img.src = dataUrl
+    img.removeAttribute('crossorigin')
+  }
+
+  await waitForImagesReady(images)
 
   return () => {
     for (const entry of restores) {
