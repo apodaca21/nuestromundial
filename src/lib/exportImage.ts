@@ -67,3 +67,84 @@ export async function dataUrlToPngBlob(dataUrl: string): Promise<Blob> {
   const response = await fetch(dataUrl)
   return response.blob()
 }
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') resolve(reader.result)
+      else reject(new Error('No se pudo leer la imagen'))
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
+async function loadCrossOriginImageAsDataUrl(src: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('Canvas no disponible'))
+        return
+      }
+      ctx.drawImage(image, 0, 0)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    image.onerror = () => reject(new Error(`No se pudo cargar ${src}`))
+    image.src = src
+  })
+}
+
+async function imageSrcToDataUrl(src: string): Promise<string> {
+  try {
+    const response = await fetch(src, { mode: 'cors', credentials: 'omit' })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    return blobToDataUrl(await response.blob())
+  } catch {
+    return loadCrossOriginImageAsDataUrl(src)
+  }
+}
+
+/** Convierte imágenes externas a data URL para que html-to-image las incluya en el PNG. */
+export async function inlineImagesForExport(root: HTMLElement): Promise<() => void> {
+  const restores: Array<{
+    img: HTMLImageElement
+    src: string
+    crossOrigin: string | null
+  }> = []
+
+  await Promise.all(
+    Array.from(root.querySelectorAll('img')).map(async (img) => {
+      const original = img.currentSrc || img.src
+      if (!original || original.startsWith('data:')) return
+
+      try {
+        const dataUrl = await imageSrcToDataUrl(original)
+        restores.push({
+          img,
+          src: original,
+          crossOrigin: img.getAttribute('crossorigin'),
+        })
+        img.src = dataUrl
+        img.removeAttribute('crossorigin')
+        await img.decode().catch(() => undefined)
+      } catch {
+        // TeamFlag muestra fallback con código ISO si falla la carga
+      }
+    }),
+  )
+
+  return () => {
+    for (const entry of restores) {
+      entry.img.src = entry.src
+      if (entry.crossOrigin) entry.img.setAttribute('crossorigin', entry.crossOrigin)
+      else entry.img.removeAttribute('crossorigin')
+    }
+  }
+}

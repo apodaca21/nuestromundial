@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Download, Link2, Loader2, Minus, Plus, RotateCcw } from 'lucide-react'
+import { Download, Loader2, Minus, Plus, RotateCcw } from 'lucide-react'
 import { TeamFlag } from '../../../components/ui/TeamFlag'
-import { BRACKET_SHARE_MESSAGE, bracketShareMessage } from '../../../lib/appRoutes'
 import {
   getBracketColumns,
   getChampion,
@@ -389,7 +388,6 @@ export function InteractiveBracketTree({
   const [isCapturing, setIsCapturing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
-  const [linkCopied, setLinkCopied] = useState(false)
   const { containerRef, innerRef, effectiveScale, scaledW, scaledH } =
     useBracketScale(
       `${bracketHeight}:${Object.keys(state.winners).length}`,
@@ -445,19 +443,6 @@ export function InteractiveBracketTree({
       const next = Number((current + delta).toFixed(2))
       return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next))
     })
-  }
-
-  const copyShareLink = async () => {
-    const message = champion
-      ? bracketShareMessage(champion.team.name)
-      : BRACKET_SHARE_MESSAGE
-    try {
-      await navigator.clipboard.writeText(message)
-      setLinkCopied(true)
-      window.setTimeout(() => setLinkCopied(false), 2500)
-    } catch {
-      setExportError('No se pudo copiar el enlace')
-    }
   }
 
   const handleDownload = async () => {
@@ -750,17 +735,9 @@ export function InteractiveBracketTree({
               </>
             )}
           </button>
-          <button
-            type="button"
-            onClick={copyShareLink}
-            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 text-xs font-black uppercase tracking-wide text-stone-600 transition active:scale-[0.98]"
-          >
-            <Link2 className="h-4 w-4" aria-hidden />
-            {linkCopied ? '¡Enlace copiado!' : 'Copiar enlace para WhatsApp'}
-          </button>
           <p className="text-center text-[10px] leading-snug text-stone-400">
-            La imagen incluye tu cuadro, campeón y @apo.webs. Al compartir en
-            WhatsApp va el enlace a nuestromundial.com/bracket
+            Comparte la imagen con tu cuadro, campeón y @apo.webs, más el mensaje con
+            enlace a nuestromundial.com/bracket.
           </p>
           {exportError ? (
             <p className="text-center text-xs font-bold text-red-600">{exportError}</p>
