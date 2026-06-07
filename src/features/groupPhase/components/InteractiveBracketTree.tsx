@@ -147,7 +147,7 @@ function BracketMatchCell({
 
   if (home && away) {
     return (
-      <div className={`${CELL_W} flex flex-col gap-0.5`}>
+      <div className={`${CELL_W} flex shrink-0 flex-col gap-0.5`}>
         <BracketTeamCell
           team={home}
           variant={teamVariant(home, winner)}
@@ -163,7 +163,7 @@ function BracketMatchCell({
   }
 
   return (
-    <div className={`${CELL_W} flex flex-col gap-0.5`}>
+    <div className={`${CELL_W} flex shrink-0 flex-col gap-0.5`}>
       {home ? (
         <BracketTeamCell team={home} variant="waiting" />
       ) : (
@@ -179,6 +179,9 @@ function BracketMatchCell({
 }
 
 const BRACKET_GRID_ROWS = 8
+/** 2 equipos (1.65rem c/u) + gap + bordes — altura mínima por fila del grid. */
+const BRACKET_ROW_MIN_PX = 58
+const BRACKET_SLOT_HEIGHT = BRACKET_ROW_MIN_PX * BRACKET_GRID_ROWS
 
 function BracketGridColumn({
   title,
@@ -204,7 +207,7 @@ function BracketGridColumn({
         className="grid w-full"
         style={{
           height: slotHeight,
-          gridTemplateRows: `repeat(${BRACKET_GRID_ROWS}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${BRACKET_GRID_ROWS}, ${BRACKET_ROW_MIN_PX}px)`,
         }}
       >
         {matchIds.map((matchId, index) => {
@@ -213,7 +216,7 @@ function BracketGridColumn({
           return (
             <div
               key={matchId}
-              className="flex min-h-0 items-center justify-center py-px"
+              className="flex items-center justify-center overflow-hidden"
               style={{ gridRow: `${startRow} / ${endRow}` }}
             >
               <BracketMatchCell state={state} matchId={matchId} onPick={onPick} />
@@ -245,11 +248,11 @@ function BracketFinalColumn({
         className="grid w-full"
         style={{
           height: slotHeight,
-          gridTemplateRows: `repeat(${BRACKET_GRID_ROWS}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${BRACKET_GRID_ROWS}, ${BRACKET_ROW_MIN_PX}px)`,
         }}
       >
         <div
-          className="flex min-h-0 items-center justify-center py-px"
+          className="flex items-center justify-center overflow-hidden"
           style={{ gridRow: `1 / ${BRACKET_GRID_ROWS + 1}` }}
         >
           <div className="rounded-xl border-2 border-amber-400/60 bg-amber-50/90 p-1 shadow-sm">
@@ -279,8 +282,7 @@ function defaultUserZoom(): number {
 }
 
 function defaultBracketHeight(): number {
-  if (typeof window === 'undefined') return 360
-  return window.innerWidth < 640 ? 300 : 360
+  return BRACKET_SLOT_HEIGHT
 }
 
 function useBracketScale(
