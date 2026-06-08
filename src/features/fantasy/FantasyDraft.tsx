@@ -12,6 +12,7 @@ import { DraftLobby } from './components/DraftLobby'
 import { DraftPitch } from './components/DraftPitch'
 import { InteractiveDraftPitch } from './components/InteractiveDraftPitch'
 import { TeamRating } from './components/TeamRating'
+import { WorldCupSimulation } from './components/WorldCupSimulation'
 
 const TOTAL_PICKS = POSITIONS.length
 
@@ -120,6 +121,7 @@ export function FantasyDraft() {
       ) : isComplete ? (
         <div className="flex flex-col gap-6">
           <TeamRating rating={teamRating} />
+          <WorldCupSimulation teamRating={teamRating} />
           <DraftPitch selectedTeam={selectedTeam} />
           <button
             type="button"
