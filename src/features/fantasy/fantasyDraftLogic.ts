@@ -1,15 +1,40 @@
 import type { DraftPlayer, SelectedPlayer } from './types'
 
+const MAX_STARS = 5
+
+/** Más estrellas = menos peso → menos probable en los 3 sobres */
+function pickWeight(stars: number): number {
+  const gap = MAX_STARS + 1 - stars
+  return gap * gap
+}
+
+function weightedPickOne(pool: DraftPlayer[]): { player: DraftPlayer; index: number } {
+  const weights = pool.map((p) => pickWeight(p.stars))
+  const total = weights.reduce((sum, w) => sum + w, 0)
+  let roll = Math.random() * total
+
+  for (let i = 0; i < pool.length; i++) {
+    roll -= weights[i]
+    if (roll <= 0) return { player: pool[i], index: i }
+  }
+
+  return { player: pool[pool.length - 1], index: pool.length - 1 }
+}
+
 export function pickRandomOptions(
   players: DraftPlayer[],
   count = 3,
 ): DraftPlayer[] {
   const pool = [...players]
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[pool[i], pool[j]] = [pool[j], pool[i]]
+  const picked: DraftPlayer[] = []
+
+  for (let i = 0; i < Math.min(count, pool.length); i++) {
+    const { player, index } = weightedPickOne(pool)
+    picked.push(player)
+    pool.splice(index, 1)
   }
-  return pool.slice(0, Math.min(count, pool.length))
+
+  return picked
 }
 
 export function calcTeamRating(selectedTeam: SelectedPlayer[]): number {

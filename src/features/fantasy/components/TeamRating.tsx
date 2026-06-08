@@ -10,7 +10,7 @@ export function TeamRating({ rating }: TeamRatingProps) {
   return (
     <div className="text-center">
       <h2 className="font-display text-3xl tracking-wide text-stone-900 sm:text-4xl">
-        Rating del Equipo: {rating} ⭐
+        Rating del Equipo: {rating}
       </h2>
       <p className="mt-2 text-base font-semibold text-[#6b00ff] sm:text-lg">
         {message}
