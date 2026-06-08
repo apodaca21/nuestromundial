@@ -11,6 +11,7 @@ const PATH_TO_TAB: Record<string, AppTab> = {
   '/bingo': 'bingo',
   '/estampa': 'estampa',
   '/calendario': 'calendario',
+  '/fantasy': 'fantasy',
   '/admin': 'admin',
 }
 
@@ -20,6 +21,7 @@ const TAB_TO_PATH: Record<AppTab, string> = {
   bingo: '/bingo',
   estampa: '/estampa',
   calendario: '/calendario',
+  fantasy: '/fantasy',
   admin: '/admin',
 }
 
@@ -54,6 +56,11 @@ export const SECTION_META: Record<AppTab, SectionMeta> = {
     title: 'Calendario — Nuestro Mundial 2026',
     description: 'Agrega los partidos del Mundial 2026 a Google Calendar o Apple Calendar.',
     shareText: 'No te pierdas ningún partido del Mundial 2026',
+  },
+  fantasy: {
+    title: 'Fantasy Draft — Nuestro Mundial 2026',
+    description: 'Arma tu 11 inicial abriendo sobres y elige un jugador por posición.',
+    shareText: 'Arma tu equipo Fantasy del Mundial 2026',
   },
   admin: {
     title: 'Admin — Nuestro Mundial 2026',

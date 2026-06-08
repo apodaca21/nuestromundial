@@ -10,6 +10,7 @@ import { BingoPlaceholder } from '../features/bingo/BingoPlaceholder'
 import { PronosticosFlow } from '../features/pronosticos/PronosticosFlow'
 import { GroupPhaseFlow } from '../features/groupPhase/GroupPhaseFlow'
 import { WorldCupCalendar } from '../features/calendar/WorldCupCalendar'
+import { FantasyDraft } from '../features/fantasy/FantasyDraft'
 import { StickerErrorBoundary } from '../features/sticker/StickerErrorBoundary'
 import { StickerGenerator } from '../features/sticker/StickerGenerator'
 import { BottomNavigation } from './BottomNavigation'
@@ -103,6 +104,7 @@ export function AppShell() {
           </StickerErrorBoundary>
         )}
         {activeTab === 'calendario' && <WorldCupCalendar />}
+        {activeTab === 'fantasy' && <FantasyDraft />}
         {adminUnlocked && activeTab === 'admin' && (
           <AdminScreen onExit={() => navigateToTab('pronosticos')} />
         )}
