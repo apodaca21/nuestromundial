@@ -1,6 +1,6 @@
 import { PLAYER_IMAGE_PATHS } from './fantasyImageManifest'
 
-function encodePublicPath(relativePath: string): string {
+export function encodePublicPath(relativePath: string): string {
   return `/fantasy/${relativePath.split('/').map(encodeURIComponent).join('/')}`
 }
 
@@ -22,3 +22,8 @@ export const PACK_IMAGES = {
 } as const
 
 export const PITCH_BG = '/fantasy/cancha.jpg'
+
+export function getAllFantasyAssetUrls(): string[] {
+  const cardUrls = Object.values(PLAYER_IMAGE_PATHS).map(encodePublicPath)
+  return [PITCH_BG, PACK_IMAGES.closed, PACK_IMAGES.opening, PACK_IMAGES.open, ...cardUrls]
+}

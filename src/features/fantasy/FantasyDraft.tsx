@@ -7,6 +7,7 @@ import {
   calcTeamRating,
   pickRandomOptions,
 } from './fantasyDraftLogic'
+import { preloadFantasyAssets, preloadPositionCards } from './fantasyImagePreload'
 import type { DraftPlayer, PackState, SelectedPlayer } from './types'
 import { DraftLobby } from './components/DraftLobby'
 import { DraftPitch } from './components/DraftPitch'
@@ -42,12 +43,21 @@ export function FantasyDraft() {
       if (selectedByPosition[positionId]) return
       if (activePositionId !== null) return
 
+      const position = getPositionById(positionId)
+      if (position) {
+        preloadPositionCards(position.name, position.players)
+      }
+
       setActivePositionId(positionId)
       setOpeningPhase('early')
       setPackState('OPENING')
     },
     [selectedByPosition, activePositionId],
   )
+
+  useEffect(() => {
+    void preloadFantasyAssets()
+  }, [])
 
   useEffect(() => {
     if (packState !== 'OPENING' || !activePositionId) return
@@ -59,7 +69,8 @@ export function FantasyDraft() {
     const revealTimer = window.setTimeout(() => {
       const position = getPositionById(activePositionId)
       if (position) {
-        setCurrentOptions(pickRandomOptions(position.players))
+        const options = pickRandomOptions(position.players)
+        setCurrentOptions(options)
       }
       setPackState('REVEALED')
     }, 1000)

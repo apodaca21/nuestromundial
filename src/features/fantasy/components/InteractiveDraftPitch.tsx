@@ -110,10 +110,10 @@ export function InteractiveDraftPitch({
               <p className="mb-1.5 max-w-full truncate px-1 text-center text-[11px] font-bold text-white sm:mb-3 sm:text-base">
                 Elige tu {getPositionShortLabel(activePositionId ?? '')}
               </p>
-              <div className="grid w-full grid-cols-3 gap-1 sm:max-w-none sm:gap-3">
-                {currentOptions.map((player) => (
+              <div className="grid w-full grid-cols-3 gap-1 sm:gap-3 [grid-template-columns:repeat(3,minmax(0,1fr))]">
+                {currentOptions.map((player, index) => (
                   <PlayerCard
-                    key={player.name}
+                    key={`${player.name}-${index}`}
                     player={player}
                     positionName={activePositionName}
                     compact

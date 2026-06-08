@@ -40,7 +40,7 @@ export function PlayerCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`group flex w-full touch-manipulation flex-col overflow-hidden bg-white shadow-md transition-all hover:border-[#6b00ff] hover:shadow-lg active:scale-[0.98] active:border-[#6b00ff] ${
+      className={`group flex w-full min-w-0 touch-manipulation flex-col overflow-hidden bg-white shadow-md transition-all hover:border-[#6b00ff] hover:shadow-lg active:scale-[0.98] active:border-[#6b00ff] ${
         overlay
           ? 'rounded-lg border border-stone-200'
           : 'rounded-xl border-2 border-stone-200'
@@ -62,7 +62,9 @@ export function PlayerCard({
             overlay ? 'h-full w-auto object-contain' : 'h-full w-full object-cover object-top'
           }`}
           draggable={false}
-          loading="lazy"
+          loading={overlay ? 'eager' : 'lazy'}
+          decoding="async"
+          fetchPriority={overlay ? 'high' : 'auto'}
         />
       </div>
       <div
