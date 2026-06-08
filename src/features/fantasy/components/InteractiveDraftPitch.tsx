@@ -106,18 +106,18 @@ export function InteractiveDraftPitch({
         {packState === 'REVEALED' &&
           currentOptions.length > 0 &&
           activePositionName && (
-            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/45 p-3 backdrop-blur-[2px] sm:p-4">
-              <p className="mb-3 text-center text-sm font-bold text-white sm:text-base">
-                Elige tu {getPositionShortLabel(activePositionId ?? '')} —{' '}
-                {activePositionName}
+            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/45 px-1.5 py-2 backdrop-blur-[2px] sm:p-4">
+              <p className="mb-1.5 max-w-full truncate px-1 text-center text-[11px] font-bold text-white sm:mb-3 sm:text-base">
+                Elige tu {getPositionShortLabel(activePositionId ?? '')}
               </p>
-              <div className="grid w-full max-w-[18rem] grid-cols-1 gap-2 sm:max-w-none sm:grid-cols-3 sm:gap-3">
+              <div className="grid w-full grid-cols-3 gap-1 sm:max-w-none sm:gap-3">
                 {currentOptions.map((player) => (
                   <PlayerCard
                     key={player.name}
                     player={player}
                     positionName={activePositionName}
                     compact
+                    pitchOverlay
                     onSelect={() => onSelectPlayer(player)}
                   />
                 ))}
