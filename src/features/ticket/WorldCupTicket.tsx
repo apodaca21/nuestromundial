@@ -1,7 +1,10 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
 import { pageX, fieldInput } from '../../lib/layout'
-import { downloadWorldCupTicket } from './exportTicket'
+import {
+  downloadWorldCupTicket,
+  preloadTicketPlayerPhoto,
+} from './exportTicket'
 import { TicketCanvas } from './components/TicketCanvas'
 import { TicketCountryPicker } from './components/TicketCountryPicker'
 import { getTicketPlayerPhotoSrc } from './ticketPlayerPhotos'
@@ -44,6 +47,10 @@ export function WorldCupTicket() {
     if (!positionFilter) return TICKET_POSITIONS
     return TICKET_POSITIONS.filter((p) => p.id === positionFilter)
   }, [positionFilter])
+
+  useEffect(() => {
+    preloadTicketPlayerPhoto(playerImageSrc)
+  }, [playerImageSrc])
 
   const handleDownload = useCallback(async () => {
     const el = ticketRef.current
@@ -203,7 +210,7 @@ export function WorldCupTicket() {
           {isExporting ? (
             <>
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-              Generando…
+              Generando PNG…
             </>
           ) : (
             <>
@@ -212,6 +219,10 @@ export function WorldCupTicket() {
             </>
           )}
         </button>
+        <p className="text-center text-[10px] leading-snug text-stone-400">
+          Al compartir se incluye el enlace a nuestromundial.com/boleto. En WhatsApp
+          pégalo como segundo mensaje si no sale solo.
+        </p>
       </div>
     </div>
   )
