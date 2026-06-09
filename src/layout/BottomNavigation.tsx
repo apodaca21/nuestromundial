@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { ClipboardList, CalendarDays, Grid3x3, Image, Settings, TrendingUp, Trophy } from 'lucide-react'
+import { ClipboardList, CalendarDays, Grid3x3, Image, Settings, Ticket, TrendingUp, Trophy } from 'lucide-react'
 import type { AppTab } from '../types/match'
 import { isTabEnabled } from '../lib/featureFlags'
 import { navBar, navInner } from '../lib/layout'
@@ -14,6 +14,7 @@ const allPublicTabs: { id: AppTab; label: string; icon: LucideIcon }[] = [
   { id: 'pronosticos', label: 'Pronósticos', icon: TrendingUp },
   { id: 'calendario', label: 'Calendario', icon: CalendarDays },
   { id: 'fantasy', label: 'Fantasy', icon: Trophy },
+  { id: 'boleto', label: 'Boleto', icon: Ticket },
   { id: 'quiniela', label: 'Bracket', icon: ClipboardList },
   { id: 'bingo', label: 'Bingo', icon: Grid3x3 },
   { id: 'estampa', label: 'Mi Estampa', icon: Image },

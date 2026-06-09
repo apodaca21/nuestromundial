@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "fetch:ticket-photos": "node scripts/fetch-ticket-player-photos.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -16,6 +17,7 @@
     "@imgly/background-removal": "^1.7.0",
     "@supabase/supabase-js": "^2.107.0",
     "html-to-image": "^1.11.13",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"

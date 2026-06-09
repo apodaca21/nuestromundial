@@ -12,6 +12,7 @@ const PATH_TO_TAB: Record<string, AppTab> = {
   '/estampa': 'estampa',
   '/calendario': 'calendario',
   '/fantasy': 'fantasy',
+  '/boleto': 'boleto',
   '/admin': 'admin',
 }
 
@@ -22,6 +23,7 @@ const TAB_TO_PATH: Record<AppTab, string> = {
   estampa: '/estampa',
   calendario: '/calendario',
   fantasy: '/fantasy',
+  boleto: '/boleto',
   admin: '/admin',
 }
 
@@ -62,6 +64,11 @@ export const SECTION_META: Record<AppTab, SectionMeta> = {
     description: 'Arma tu 11 inicial abriendo sobres y elige un jugador por posición.',
     shareText: 'Arma tu equipo Fantasy del Mundial 2026',
   },
+  boleto: {
+    title: 'Boleto al Mundial — Nuestro Mundial 2026',
+    description: 'Genera tu pase VIP al Mundial 2026 en formato Instagram Story.',
+    shareText: '¡Crea tu boleto al Mundial 2026!',
+  },
   admin: {
     title: 'Admin — Nuestro Mundial 2026',
     description: 'Panel de administración.',
@@ -89,6 +96,7 @@ export function shareMessageForTab(tab: AppTab): string {
 }
 
 export const ESTAMPA_SHARE_MESSAGE = shareMessageForTab('estampa')
+export const BOLETO_SHARE_MESSAGE = shareMessageForTab('boleto')
 
 export const BRACKET_SHARE_URL = `${SITE_ORIGIN}/bracket`
 

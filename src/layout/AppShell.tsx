@@ -11,6 +11,7 @@ import { PronosticosFlow } from '../features/pronosticos/PronosticosFlow'
 import { GroupPhaseFlow } from '../features/groupPhase/GroupPhaseFlow'
 import { WorldCupCalendar } from '../features/calendar/WorldCupCalendar'
 import { FantasyDraft } from '../features/fantasy/FantasyDraft'
+import { WorldCupTicket } from '../features/ticket/WorldCupTicket'
 import { StickerErrorBoundary } from '../features/sticker/StickerErrorBoundary'
 import { StickerGenerator } from '../features/sticker/StickerGenerator'
 import { BottomNavigation } from './BottomNavigation'
@@ -105,6 +106,7 @@ export function AppShell() {
         )}
         {activeTab === 'calendario' && <WorldCupCalendar />}
         {activeTab === 'fantasy' && <FantasyDraft />}
+        {activeTab === 'boleto' && <WorldCupTicket />}
         {adminUnlocked && activeTab === 'admin' && (
           <AdminScreen onExit={() => navigateToTab('pronosticos')} />
         )}
