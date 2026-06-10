@@ -3,7 +3,6 @@ import {
   AlertCircle,
   Check,
   Download,
-  LogIn,
   Plus,
   RotateCcw,
   Share2,
@@ -28,8 +27,13 @@ import {
 import {
   createLeagueShareCode,
   fetchLeagueByShareCode,
+  hydrateAssignments,
   saveLeagueDraw,
 } from '../../services/leagueDraw/leagueDrawService'
+import {
+  getLocalLeagueByShareCode,
+  rememberLocalLeague,
+} from './localLeagueStorage'
 import { ALL_WORLD_CUP_TEAMS } from './worldCupTeams'
 import {
   distributeTeams,
@@ -39,6 +43,7 @@ import {
 } from './distributeTeams'
 
 type DrawStep = 'setup' | 'drawing' | 'results' | 'loading'
+type SetupView = 'create' | 'my-leagues'
 
 interface LeagueDrawProps {
   shareCode?: string | null
@@ -82,10 +87,21 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
     useState<DrawDistributionMode>('groups')
   const [viewingSaved, setViewingSaved] = useState(false)
   const [leaguesRefreshKey, setLeaguesRefreshKey] = useState(0)
+  const [setupView, setSetupView] = useState<SetupView>('create')
 
   const resultsRef = useRef<HTMLDivElement>(null)
   const flagIntervalRef = useRef<number | null>(null)
   const pendingShareCodeRef = useRef<string | null>(null)
+  const creatingLeagueRef = useRef(false)
+
+  const syncShareUrl = useCallback((code: string) => {
+    pendingShareCodeRef.current = code
+    creatingLeagueRef.current = true
+    const path = `/liga/${code}`
+    if (window.location.pathname !== path) {
+      window.history.replaceState({ tab: 'bingo' }, '', path)
+    }
+  }, [])
 
   const resultStats = useMemo(
     () => leagueResultsStats(assignments),
@@ -119,6 +135,7 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
     ) => {
       if (!user || !configured) {
         setSaveState('skipped')
+        creatingLeagueRef.current = false
         return
       }
 
@@ -142,45 +159,78 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
         setSaveError(
           err instanceof Error ? err.message : 'No se pudo guardar la liga',
         )
+      } finally {
+        creatingLeagueRef.current = false
       }
     },
     [configured, onLeagueSaved, user],
   )
 
   const loadSharedLeague = useCallback(async (code: string) => {
-    if (!configured) {
-      setLoadError('Configura Supabase para abrir ligas guardadas.')
-      setStep('setup')
-      return
-    }
-
     setStep('loading')
     setLoadError('')
 
-    try {
-      const saved = await fetchLeagueByShareCode(code)
-      if (!saved) {
-        setLoadError('No encontramos esa liga. Revisa el enlace.')
-        setStep('setup')
-        return
-      }
-
-      setLeagueName(saved.record.name)
-      setSavedShareCode(saved.record.share_code)
-      setAssignments(saved.assignments)
+    const openLocalLeague = (
+      local: NonNullable<ReturnType<typeof getLocalLeagueByShareCode>>,
+    ) => {
+      setLeagueName(local.name)
+      setSavedShareCode(local.share_code)
+      setAssignments(hydrateAssignments(local.draw_result))
       setSaveState('saved')
       setViewingSaved(true)
       setStep('results')
+    }
+
+    if (!configured) {
+      const local = getLocalLeagueByShareCode(code)
+      if (local) {
+        openLocalLeague(local)
+        return
+      }
+      setLoadError('Configura Supabase para abrir ligas guardadas.')
+      setStep('setup')
+      setSetupView('my-leagues')
+      return
+    }
+
+    try {
+      const saved = await fetchLeagueByShareCode(code)
+      if (saved) {
+        setLeagueName(saved.record.name)
+        setSavedShareCode(saved.record.share_code)
+        setAssignments(saved.assignments)
+        setSaveState('saved')
+        setViewingSaved(true)
+        setStep('results')
+        return
+      }
+
+      const local = getLocalLeagueByShareCode(code)
+      if (local) {
+        openLocalLeague(local)
+        return
+      }
+
+      setLoadError('No encontramos esa liga. Revisa el enlace.')
+      setStep('setup')
+      setSetupView('my-leagues')
     } catch (err) {
+      const local = getLocalLeagueByShareCode(code)
+      if (local) {
+        openLocalLeague(local)
+        return
+      }
       setLoadError(
         err instanceof Error ? err.message : 'No se pudo cargar la liga',
       )
       setStep('setup')
+      setSetupView('my-leagues')
     }
   }, [configured])
 
   useEffect(() => {
     if (!shareCode) return
+    if (creatingLeagueRef.current) return
     if (shareCode === pendingShareCodeRef.current) return
     void loadSharedLeague(shareCode)
   }, [shareCode, loadSharedLeague])
@@ -194,8 +244,8 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
     setViewingSaved(false)
     const shareCode = createLeagueShareCode()
     pendingShareCodeRef.current = shareCode
+    creatingLeagueRef.current = true
     setSavedShareCode(shareCode)
-    onLeagueSaved?.(shareCode)
     setStep('drawing')
     setDrawingFlag(
       ALL_WORLD_CUP_TEAMS[Math.floor(Math.random() * ALL_WORLD_CUP_TEAMS.length)],
@@ -216,15 +266,28 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
       )
       setAssignments(result)
       setStep('results')
+      rememberLocalLeague({
+        shareCode,
+        name: leagueName.trim(),
+        participantCount: validParticipants.length,
+        drawResult: {
+          assignments: result.map((entry) => ({
+            participant: entry.participant,
+            teamCodes: entry.teams.map((team) => team.code),
+          })),
+        },
+      })
+      setLeaguesRefreshKey((k) => k + 1)
+      syncShareUrl(shareCode)
       void persistDraw(leagueName.trim(), result, shareCode)
     }, DRAW_DURATION_MS)
   }, [
     canGenerate,
     distributionMode,
     leagueName,
-    onLeagueSaved,
     persistDraw,
     stopFlagAnimation,
+    syncShareUrl,
     validParticipants,
   ])
 
@@ -263,7 +326,9 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
     setShareLinkState('idle')
     setLoadError('')
     pendingShareCodeRef.current = null
+    creatingLeagueRef.current = false
     setViewingSaved(false)
+    setSetupView('my-leagues')
     onClearLeague?.()
   }
 
@@ -287,6 +352,11 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
       setShareLinkState('idle')
     }
   }
+
+  const retryCloudSave = useCallback(() => {
+    if (!savedShareCode || assignments.length === 0) return
+    void persistDraw(leagueName.trim(), assignments, savedShareCode)
+  }, [assignments, leagueName, persistDraw, savedShareCode])
 
   const handleDownload = async () => {
     const node = resultsRef.current
@@ -344,41 +414,50 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
 
       {step === 'setup' && (
         <div className="space-y-5">
-          {!authLoading && !user && (
-            <div className="rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3">
-              <p className="text-sm font-semibold text-amber-900">
-                Debes iniciar sesión para guardar tu liga
-              </p>
-              <p className="mt-1 text-xs text-amber-800/80">
-                Puedes generar la quiniela sin cuenta, pero no quedará guardada en
-                tu perfil.
-              </p>
-              <button
-                type="button"
-                onClick={requestLogin}
-                disabled={!configured}
-                className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#6b00ff] px-4 text-sm font-bold text-white shadow-md shadow-[#6b00ff]/25 active:scale-[0.98] disabled:opacity-50"
-              >
-                <LogIn className="h-4 w-4" aria-hidden />
-                {configured ? 'Iniciar sesión' : 'Supabase no configurado'}
-              </button>
-            </div>
-          )}
+          <div
+            className="grid grid-cols-2 gap-1 rounded-xl border border-stone-200 bg-stone-100 p-1"
+            role="tablist"
+            aria-label="Quiniela"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={setupView === 'create'}
+              onClick={() => setSetupView('create')}
+              className={`min-h-10 rounded-lg text-sm font-bold transition-colors ${
+                setupView === 'create'
+                  ? 'bg-white text-[#6b00ff] shadow-sm'
+                  : 'text-stone-600'
+              }`}
+            >
+              Nueva quiniela
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={setupView === 'my-leagues'}
+              onClick={() => setSetupView('my-leagues')}
+              className={`min-h-10 rounded-lg text-sm font-bold transition-colors ${
+                setupView === 'my-leagues'
+                  ? 'bg-white text-[#6b00ff] shadow-sm'
+                  : 'text-stone-600'
+              }`}
+            >
+              Mis ligas
+            </button>
+          </div>
 
-          {!authLoading && user && (
+          {setupView === 'my-leagues' ? (
+            <MyLeaguesPanel
+              authLoading={authLoading}
+              userId={user?.id ?? null}
+              configured={configured}
+              refreshKey={leaguesRefreshKey}
+              onSelectLeague={openSavedLeague}
+              onRequestLogin={requestLogin}
+            />
+          ) : (
             <>
-              <MyLeaguesPanel
-                userId={user.id}
-                configured={configured}
-                refreshKey={leaguesRefreshKey}
-                onSelectLeague={openSavedLeague}
-              />
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                Sesión activa — las quinielas nuevas se guardan automáticamente.
-              </div>
-            </>
-          )}
-
           <div className="space-y-2">
             <label
               htmlFor="league-name"
@@ -498,6 +577,8 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
             <Shuffle className="h-5 w-5" aria-hidden />
             Generar Quiniela
           </button>
+            </>
+          )}
         </div>
       )}
 
@@ -537,26 +618,42 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
             </div>
           )}
 
+          {!viewingSaved && (
+            <p className="flex items-center justify-center gap-1.5 text-center text-xs font-bold text-emerald-700">
+              <Check className="h-3.5 w-3.5" aria-hidden />
+              Quiniela lista — ya está en Mis ligas de este dispositivo
+            </p>
+          )}
+
           {!viewingSaved && saveState === 'saving' && (
             <p className="text-center text-xs font-bold text-stone-500">
-              Guardando liga en tu cuenta…
+              Sincronizando con tu cuenta…
             </p>
           )}
           {!viewingSaved && saveState === 'saved' && (
             <p className="flex items-center justify-center gap-1.5 text-center text-xs font-bold text-emerald-700">
               <Check className="h-3.5 w-3.5" aria-hidden />
-              Liga guardada — también en Mis ligas guardadas
+              También guardada en tu cuenta
             </p>
           )}
           {!viewingSaved && saveState === 'skipped' && (
             <p className="text-center text-xs font-bold text-amber-700">
-              Quiniela local — inicia sesión para guardarla en tu perfil
+              Solo en este dispositivo — inicia sesión para guardarla en la nube
             </p>
           )}
           {!viewingSaved && saveState === 'error' && (
-            <p className="text-center text-xs font-bold text-[#ff004d]">
-              {saveError}
-            </p>
+            <div className="space-y-2 text-center">
+              <p className="text-xs font-bold text-[#ff004d]">{saveError}</p>
+              {user && configured && (
+                <button
+                  type="button"
+                  onClick={retryCloudSave}
+                  className="text-xs font-bold text-[#6b00ff] underline"
+                >
+                  Reintentar guardado en la nube
+                </button>
+              )}
+            </div>
           )}
 
           <div className="flex flex-wrap gap-2">

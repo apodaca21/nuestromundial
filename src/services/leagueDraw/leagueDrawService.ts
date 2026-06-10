@@ -25,6 +25,44 @@ function requireClient() {
   return supabase
 }
 
+const SAVE_TIMEOUT_MS = 20_000
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  message: string,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms)
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => window.clearTimeout(timer))
+  })
+}
+
+function formatSaveError(code: string | undefined, message: string): string {
+  if (code === '42P01') {
+    return 'Falta la tabla leagues en Supabase. Ejecuta el SQL de supabase/schema.sql.'
+  }
+  if (code === '42501') {
+    return 'Sin permiso para guardar. Cierra sesión, vuelve a entrar e inténtalo otra vez.'
+  }
+  if (code === '23503') {
+    return 'Tu cuenta no está vinculada correctamente. Vuelve a iniciar sesión.'
+  }
+  return message || 'No se pudo guardar la liga'
+}
+
+async function ensureAuthenticatedSession(supabase: ReturnType<typeof requireClient>) {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw new Error(error.message)
+  if (!data.session?.user) {
+    throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.')
+  }
+  return data.session
+}
+
 function createShareCode(): string {
   return String(Math.floor(10000 + Math.random() * 90000))
 }
@@ -71,34 +109,65 @@ export async function saveLeagueDraw(input: {
   shareCode?: string
 }): Promise<LeagueRecord> {
   const supabase = requireClient()
-  const drawResult = toStoredResult(input.assignments)
+  const session = await ensureAuthenticatedSession(supabase)
 
+  if (session.user.id !== input.ownerId) {
+    throw new Error(
+      'La sesión activa no coincide con tu cuenta. Cierra sesión e inténtalo de nuevo.',
+    )
+  }
+
+  const drawResult = toStoredResult(input.assignments)
   let shareCode = input.shareCode ?? createShareCode()
 
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const { data, error } = await supabase
-      .from('leagues')
-      .insert({
+  if (input.shareCode) {
+    const existing = await fetchLeagueByShareCode(input.shareCode)
+    if (existing && existing.record.owner_id === input.ownerId) {
+      return existing.record
+    }
+  }
+
+  const saveOperation = async (): Promise<LeagueRecord> => {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const { error: insertError } = await supabase.from('leagues').insert({
         owner_id: input.ownerId,
         name: input.name.trim(),
         share_code: shareCode,
         draw_result: drawResult,
       })
-      .select('id, owner_id, name, share_code, draw_result, created_at')
-      .single()
 
-    if (!error && data) {
-      return data as LeagueRecord
+      if (!insertError) {
+        const { data, error: selectError } = await supabase
+          .from('leagues')
+          .select('id, owner_id, name, share_code, draw_result, created_at')
+          .eq('share_code', shareCode)
+          .single()
+
+        if (selectError) {
+          throw new Error(formatSaveError(selectError.code, selectError.message))
+        }
+        if (!data) {
+          throw new Error('La liga se guardó pero no pudimos leerla. Recarga la página.')
+        }
+        return data as LeagueRecord
+      }
+
+      if (insertError.code === '23505') {
+        shareCode = createShareCode()
+        continue
+      }
+
+      throw new Error(formatSaveError(insertError.code, insertError.message))
     }
 
-    if (error?.code === '23505') {
-      shareCode = createShareCode()
-      continue
-    }
-    throw new Error(error?.message ?? 'No se pudo guardar la liga')
+    throw new Error('No se pudo generar un código único para la liga')
   }
 
-  throw new Error('No se pudo generar un código único para la liga')
+  return withTimeout(
+    saveOperation(),
+    SAVE_TIMEOUT_MS,
+    'Tiempo agotado al guardar. Ya puedes usar la quiniela; reintenta sincronizar.',
+  )
 }
 
 export async function fetchUserLeagues(userId: string): Promise<LeagueSummary[]> {
