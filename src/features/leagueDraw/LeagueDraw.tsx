@@ -19,6 +19,7 @@ import { leagueShareUrl } from '../../lib/appRoutes'
 import { preloadTeamFlags } from '../../lib/exportImage'
 import { pageX } from '../../lib/layout'
 import { LeagueResultsStory } from './components/LeagueResultsStory'
+import { MyLeaguesPanel } from './components/MyLeaguesPanel'
 import {
   downloadLeagueResults,
   leagueResultsStats,
@@ -79,9 +80,12 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
   const [loadError, setLoadError] = useState('')
   const [distributionMode, setDistributionMode] =
     useState<DrawDistributionMode>('groups')
+  const [viewingSaved, setViewingSaved] = useState(false)
+  const [leaguesRefreshKey, setLeaguesRefreshKey] = useState(0)
 
   const resultsRef = useRef<HTMLDivElement>(null)
   const flagIntervalRef = useRef<number | null>(null)
+  const pendingShareCodeRef = useRef<string | null>(null)
 
   const resultStats = useMemo(
     () => leagueResultsStats(assignments),
@@ -129,7 +133,9 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
           shareCode,
         })
         setSavedShareCode(record.share_code)
+        pendingShareCodeRef.current = record.share_code
         setSaveState('saved')
+        setLeaguesRefreshKey((k) => k + 1)
         onLeagueSaved?.(record.share_code)
       } catch (err) {
         setSaveState('error')
@@ -163,6 +169,7 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
       setSavedShareCode(saved.record.share_code)
       setAssignments(saved.assignments)
       setSaveState('saved')
+      setViewingSaved(true)
       setStep('results')
     } catch (err) {
       setLoadError(
@@ -173,9 +180,9 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
   }, [configured])
 
   useEffect(() => {
-    if (shareCode) {
-      void loadSharedLeague(shareCode)
-    }
+    if (!shareCode) return
+    if (shareCode === pendingShareCodeRef.current) return
+    void loadSharedLeague(shareCode)
   }, [shareCode, loadSharedLeague])
 
   const startDraw = useCallback(() => {
@@ -183,7 +190,10 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
 
     setSaveState('idle')
     setSaveError('')
+    setLoadError('')
+    setViewingSaved(false)
     const shareCode = createLeagueShareCode()
+    pendingShareCodeRef.current = shareCode
     setSavedShareCode(shareCode)
     onLeagueSaved?.(shareCode)
     setStep('drawing')
@@ -252,8 +262,19 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
     setSaveError('')
     setShareLinkState('idle')
     setLoadError('')
+    pendingShareCodeRef.current = null
+    setViewingSaved(false)
     onClearLeague?.()
   }
+
+  const openSavedLeague = useCallback(
+    (code: string) => {
+      pendingShareCodeRef.current = null
+      onLeagueSaved?.(code)
+      void loadSharedLeague(code)
+    },
+    [loadSharedLeague, onLeagueSaved],
+  )
 
   const handleShareLink = async () => {
     if (!leagueShareLink) return
@@ -314,7 +335,7 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
         </p>
       </header>
 
-      {loadError && (
+      {loadError && step !== 'results' && (
         <div className="flex items-start gap-2 rounded-2xl border border-[#ff004d]/20 bg-[#ff004d]/5 px-4 py-3 text-sm text-[#ff004d]">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <p>{loadError}</p>
@@ -345,9 +366,17 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
           )}
 
           {!authLoading && user && (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-              Sesión activa — tus ligas se guardan automáticamente al generar la quiniela.
-            </div>
+            <>
+              <MyLeaguesPanel
+                userId={user.id}
+                configured={configured}
+                refreshKey={leaguesRefreshKey}
+                onSelectLeague={openSavedLeague}
+              />
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+                Sesión activa — las quinielas nuevas se guardan automáticamente.
+              </div>
+            </>
           )}
 
           <div className="space-y-2">
@@ -501,23 +530,30 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
 
       {step === 'results' && (
         <div className="space-y-4">
-          {saveState === 'saving' && (
+          {viewingSaved && (
+            <div className="rounded-2xl border border-[#6b00ff]/20 bg-[#6b00ff]/5 px-4 py-3 text-center text-xs font-bold text-[#6b00ff]">
+              Liga guardada — solo lectura. Puedes compartir el enlace o descargar la
+              Story, pero el reparto no se puede volver a generar.
+            </div>
+          )}
+
+          {!viewingSaved && saveState === 'saving' && (
             <p className="text-center text-xs font-bold text-stone-500">
               Guardando liga en tu cuenta…
             </p>
           )}
-          {saveState === 'saved' && (
+          {!viewingSaved && saveState === 'saved' && (
             <p className="flex items-center justify-center gap-1.5 text-center text-xs font-bold text-emerald-700">
               <Check className="h-3.5 w-3.5" aria-hidden />
-              Liga guardada — la encuentras en Mi cuenta → Mis ligas
+              Liga guardada — también en Mis ligas guardadas
             </p>
           )}
-          {saveState === 'skipped' && (
+          {!viewingSaved && saveState === 'skipped' && (
             <p className="text-center text-xs font-bold text-amber-700">
               Quiniela local — inicia sesión para guardarla en tu perfil
             </p>
           )}
-          {saveState === 'error' && (
+          {!viewingSaved && saveState === 'error' && (
             <p className="text-center text-xs font-bold text-[#ff004d]">
               {saveError}
             </p>
@@ -561,7 +597,7 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
               className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-4 text-sm font-bold text-stone-600 sm:w-auto"
             >
               <RotateCcw className="h-4 w-4" aria-hidden />
-              Nueva quiniela
+              {viewingSaved ? 'Volver a mis ligas' : 'Nueva quiniela'}
             </button>
           </div>
 
@@ -569,13 +605,14 @@ export function LeagueDraw({ shareCode, onLeagueSaved, onClearLeague }: LeagueDr
             Vista previa Story (9:16) — reparto de grupos por jugador
           </p>
 
-          <LeagueResultsStory
-            innerRef={resultsRef}
-            leagueName={leagueName}
-            assignments={assignments}
-            participantCount={resultStats.participantCount}
-            teamsPerPlayer={resultStats.teamsPerPlayer}
-          />
+          <div ref={resultsRef}>
+            <LeagueResultsStory
+              leagueName={leagueName}
+              assignments={assignments}
+              participantCount={resultStats.participantCount}
+              teamsPerPlayer={resultStats.teamsPerPlayer}
+            />
+          </div>
         </div>
       )}
 

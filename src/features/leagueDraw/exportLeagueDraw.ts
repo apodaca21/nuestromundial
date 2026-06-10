@@ -6,6 +6,7 @@ import {
 } from '../../lib/exportImage'
 import type { ParticipantAssignment } from './distributeTeams'
 import { ORPHAN_PARTICIPANT } from './distributeTeams'
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from './storyDensity'
 
 /** Resolución IG Story 9:16 */
 const STORY_EXPORT_WIDTH = 1080
@@ -24,14 +25,10 @@ async function waitForPaint(ms = 80): Promise<void> {
   })
 }
 
-async function captureStoryPng(
-  root: HTMLElement,
-  width: number,
-  height: number,
-): Promise<string> {
+async function captureStoryPng(root: HTMLElement): Promise<string> {
   return toPng(root, {
-    width,
-    height,
+    width: STORY_FRAME_WIDTH,
+    height: STORY_FRAME_HEIGHT,
     canvasWidth: STORY_EXPORT_WIDTH,
     canvasHeight: STORY_EXPORT_HEIGHT,
     pixelRatio: 1,
@@ -41,8 +38,9 @@ async function captureStoryPng(
     style: {
       borderRadius: '0',
       overflow: 'hidden',
-      width: `${width}px`,
-      height: `${height}px`,
+      width: `${STORY_FRAME_WIDTH}px`,
+      height: `${STORY_FRAME_HEIGHT}px`,
+      maxWidth: `${STORY_FRAME_WIDTH}px`,
     },
   })
 }
@@ -70,28 +68,32 @@ export async function downloadLeagueResults(
     ? `Quiniela de liga: ${leagueName.trim()} — ${shareUrl}`
     : `Quiniela de liga: ${leagueName.trim()}`
 
+  const prevWidth = exportRoot.style.width
+  const prevHeight = exportRoot.style.height
+  const prevMaxWidth = exportRoot.style.maxWidth
+
   let restoreFlags = () => {}
 
   try {
+    exportRoot.style.width = `${STORY_FRAME_WIDTH}px`
+    exportRoot.style.height = `${STORY_FRAME_HEIGHT}px`
+    exportRoot.style.maxWidth = `${STORY_FRAME_WIDTH}px`
+
     restoreFlags = await inlineImagesForExport(exportRoot, teamCodes)
-    await waitForPaint()
-
-    const rect = exportRoot.getBoundingClientRect()
-    const width = Math.ceil(rect.width)
-    const height = Math.ceil(rect.height)
-    if (width < 2 || height < 2) {
-      throw new Error('La vista previa no está visible.')
-    }
-
-    // 1ª pasada — calienta fuentes/banderas (descartar)
-    await captureStoryPng(exportRoot, width, height).catch(() => undefined)
     await waitForPaint(120)
 
-    // 2ª pasada — imagen final para compartir
-    const dataUrl = await captureStoryPng(exportRoot, width, height)
+    // 1ª pasada — calienta fuentes/banderas
+    await captureStoryPng(exportRoot).catch(() => undefined)
+    await waitForPaint(120)
+
+    // 2ª pasada — imagen final
+    const dataUrl = await captureStoryPng(exportRoot)
     const blob = await dataUrlToPngBlob(dataUrl)
     await savePngBlob(blob, `quiniela-${slug}-story.png`, shareText)
   } finally {
+    exportRoot.style.width = prevWidth
+    exportRoot.style.height = prevHeight
+    exportRoot.style.maxWidth = prevMaxWidth
     restoreFlags()
   }
 }
