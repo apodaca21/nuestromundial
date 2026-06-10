@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppTab } from '../types/match'
 import { isAdminUnlocked, subscribeAdminAccess } from '../lib/adminAccess'
-import { pathFromTab, tabFromPathname } from '../lib/appRoutes'
+import { pathFromTab, tabFromPathname, leagueShareCodeFromPathname } from '../lib/appRoutes'
 import { updatePageMeta } from '../lib/pageMeta'
 import { appMain, appShell } from '../lib/layout'
 import { useStoreSubscription } from '../hooks/useStoreSubscription'
 import { AdminScreen } from '../features/admin/AdminScreen'
-import { BingoPlaceholder } from '../features/bingo/BingoPlaceholder'
+import { LeagueDraw } from '../features/leagueDraw/LeagueDraw'
 import { PronosticosFlow } from '../features/pronosticos/PronosticosFlow'
 import { GroupPhaseFlow } from '../features/groupPhase/GroupPhaseFlow'
 import { WorldCupCalendar } from '../features/calendar/WorldCupCalendar'
@@ -28,6 +28,9 @@ export function AppShell() {
     tabFromPathname(window.location.pathname),
   )
   const [pronosticosInDetail, setPronosticosInDetail] = useState(false)
+  const [leagueShareCode, setLeagueShareCode] = useState<string | null>(() =>
+    leagueShareCodeFromPathname(window.location.pathname),
+  )
   const adminUnlocked = useStoreSubscription(
     subscribeAdminAccess,
     isAdminUnlocked,
@@ -40,10 +43,21 @@ export function AppShell() {
     mainRef.current?.scrollTo({ top: 0, left: 0 })
   }, [activeTab])
 
+  const syncFromLocation = useCallback(
+    (admin: boolean) => {
+      const tab = resolveTabFromLocation(admin)
+      setActiveTab(tab)
+      setLeagueShareCode(leagueShareCodeFromPathname(window.location.pathname))
+      updatePageMeta(tab)
+    },
+    [],
+  )
+
   const navigateToTab = useCallback(
     (tab: AppTab) => {
       if (tab === 'admin' && !adminUnlocked) return
       setActiveTab(tab)
+      setLeagueShareCode(null)
       const path = pathFromTab(tab)
       if (window.location.pathname !== path) {
         window.history.pushState({ tab }, '', path)
@@ -53,31 +67,32 @@ export function AppShell() {
     [adminUnlocked],
   )
 
-  useEffect(() => {
-    const tab = resolveTabFromLocation(adminUnlocked)
-    const path = pathFromTab(tab)
+  const openLeague = useCallback((shareCode: string) => {
+    setActiveTab('bingo')
+    setLeagueShareCode(shareCode)
+    const path = `/liga/${shareCode}`
     if (window.location.pathname !== path) {
-      window.history.replaceState({ tab }, '', path)
+      window.history.pushState({ tab: 'bingo' }, '', path)
     }
-    setActiveTab(tab)
-    updatePageMeta(tab)
+    updatePageMeta('bingo')
+  }, [])
+
+  useEffect(() => {
+    syncFromLocation(adminUnlocked)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al montar
   }, [])
 
   useEffect(() => {
-    const onPopState = () => {
-      const tab = resolveTabFromLocation(adminUnlocked)
-      const path = pathFromTab(tab)
-      if (window.location.pathname !== path) {
-        window.history.replaceState({ tab }, '', path)
-      }
-      setActiveTab(tab)
-      updatePageMeta(tab)
-    }
+    const onPopState = () => syncFromLocation(adminUnlocked)
 
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [adminUnlocked])
+  }, [adminUnlocked, syncFromLocation])
+
+  const clearLeague = useCallback(() => {
+    setLeagueShareCode(null)
+    window.history.replaceState({ tab: 'bingo' }, '', '/bingo')
+  }, [])
 
   const handleAdminUnlocked = () => {
     navigateToTab('admin')
@@ -91,14 +106,25 @@ export function AppShell() {
 
   return (
     <div className={appShell}>
-      {showTopBar && <TopBar onAdminUnlocked={handleAdminUnlocked} />}
+      {showTopBar && (
+        <TopBar
+          onAdminUnlocked={handleAdminUnlocked}
+          onOpenLeague={openLeague}
+        />
+      )}
 
       <main ref={mainRef} className={appMain} tabIndex={-1}>
         {activeTab === 'quiniela' && <GroupPhaseFlow />}
         {activeTab === 'pronosticos' && (
           <PronosticosFlow onDetailOpenChange={setPronosticosInDetail} />
         )}
-        {activeTab === 'bingo' && <BingoPlaceholder />}
+        {activeTab === 'bingo' && (
+          <LeagueDraw
+            shareCode={leagueShareCode}
+            onLeagueSaved={openLeague}
+            onClearLeague={clearLeague}
+          />
+        )}
         {activeTab === 'estampa' && (
           <StickerErrorBoundary>
             <StickerGenerator />

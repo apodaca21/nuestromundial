@@ -150,3 +150,45 @@ create policy "poll_votes_update_own"
   to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- ========== Quiniela de Liga (ligas guardadas) ==========
+
+create table if not exists public.leagues (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references auth.users (id) on delete cascade,
+  name text not null check (char_length(trim(name)) >= 2),
+  share_code text not null unique check (share_code ~ '^[0-9]{5}$'),
+  draw_result jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists leagues_owner_id_idx on public.leagues (owner_id);
+create index if not exists leagues_share_code_idx on public.leagues (share_code);
+
+alter table public.leagues enable row level security;
+
+-- Lectura pública por enlace compartido (/liga/12345)
+drop policy if exists "leagues_select_public" on public.leagues;
+create policy "leagues_select_public"
+  on public.leagues for select
+  to anon, authenticated
+  using (true);
+
+drop policy if exists "leagues_insert_own" on public.leagues;
+create policy "leagues_insert_own"
+  on public.leagues for insert
+  to authenticated
+  with check (auth.uid() = owner_id);
+
+drop policy if exists "leagues_update_own" on public.leagues;
+create policy "leagues_update_own"
+  on public.leagues for update
+  to authenticated
+  using (auth.uid() = owner_id)
+  with check (auth.uid() = owner_id);
+
+drop policy if exists "leagues_delete_own" on public.leagues;
+create policy "leagues_delete_own"
+  on public.leagues for delete
+  to authenticated
+  using (auth.uid() = owner_id);

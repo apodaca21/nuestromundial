@@ -1,16 +1,27 @@
-import { useState } from 'react'
-import { User, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ChevronRight, Trophy, User, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { fieldInput, pageX } from '../../lib/layout'
+import { fetchUserLeagues } from '../../services/leagueDraw/leagueDrawService'
+import type { LeagueSummary } from '../../types/league'
 
 type AuthMode = 'login' | 'register'
 
 interface AuthModalProps {
   open: boolean
   onClose: () => void
+  onOpenLeague?: (shareCode: string) => void
 }
 
-export function AuthModal({ open, onClose }: AuthModalProps) {
+function formatLeagueDate(iso: string) {
+  return new Date(iso).toLocaleDateString('es-MX', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+export function AuthModal({ open, onClose, onOpenLeague }: AuthModalProps) {
   const { configured, loading, user, profile, signUp, signIn, signOut } = useAuth()
   const [mode, setMode] = useState<AuthMode>('register')
   const [displayName, setDisplayName] = useState('')
@@ -19,6 +30,39 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [leagues, setLeagues] = useState<LeagueSummary[]>([])
+  const [leaguesLoading, setLeaguesLoading] = useState(false)
+  const [leaguesError, setLeaguesError] = useState('')
+
+  useEffect(() => {
+    if (!open || !user || !configured) {
+      setLeagues([])
+      return
+    }
+
+    let cancelled = false
+    setLeaguesLoading(true)
+    setLeaguesError('')
+
+    void fetchUserLeagues(user.id)
+      .then((rows) => {
+        if (!cancelled) setLeagues(rows)
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setLeaguesError(
+            err instanceof Error ? err.message : 'No se pudieron cargar tus ligas',
+          )
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLeaguesLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, user, configured])
 
   if (!open) return null
 
@@ -70,11 +114,17 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
     try {
       await signOut()
       setMessage('Sesión cerrada.')
+      setLeagues([])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cerrar sesión')
     } finally {
       setBusy(false)
     }
+  }
+
+  const handleOpenLeague = (shareCode: string) => {
+    onOpenLeague?.(shareCode)
+    onClose()
   }
 
   return (
@@ -108,7 +158,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           {!configured ? (
             <div className="space-y-3 text-sm text-stone-600">
               <p>
-                Para guardar usuarios en la base de datos, configura Supabase en tu
+                Para guardar usuarios y ligas en la base de datos, configura Supabase en tu
                 archivo <code className="text-xs">.env</code>:
               </p>
               <pre className="overflow-x-auto rounded-lg bg-stone-100 p-3 text-xs">
@@ -117,7 +167,7 @@ VITE_SUPABASE_ANON_KEY=eyJ...`}
               </pre>
               <p className="text-xs text-stone-500">
                 Ejecuta el SQL de <code>supabase/schema.sql</code> en el panel de
-                Supabase (incluye la tabla <strong>profiles</strong>).
+                Supabase (incluye <strong>profiles</strong> y <strong>leagues</strong>).
               </p>
             </div>
           ) : loading ? (
@@ -135,6 +185,50 @@ VITE_SUPABASE_ANON_KEY=eyJ...`}
                   <p className="text-xs text-stone-500">{user.email}</p>
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-[#6b00ff]" aria-hidden />
+                  <h3 className="text-xs font-black uppercase tracking-wide text-stone-500">
+                    Mis ligas
+                  </h3>
+                </div>
+
+                {leaguesLoading ? (
+                  <p className="text-xs text-stone-400">Cargando ligas…</p>
+                ) : leaguesError ? (
+                  <p className="text-xs font-bold text-[#ff004d]">{leaguesError}</p>
+                ) : leagues.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-xs text-stone-500">
+                    Aún no has creado ninguna liga. Ve a Quiniela, arma tu liga y
+                    genera el reparto.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {leagues.map((league) => (
+                      <li key={league.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenLeague(league.share_code)}
+                          className="flex w-full items-center gap-3 rounded-xl border border-stone-200 bg-white px-3 py-3 text-left active:bg-stone-50"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-bold text-stone-900">
+                              {league.name}
+                            </p>
+                            <p className="text-[11px] text-stone-500">
+                              {league.participant_count} participantes ·{' '}
+                              {formatLeagueDate(league.created_at)}
+                            </p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-stone-400" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               {message && (
                 <p className="text-xs font-bold text-[#006847]">{message}</p>
               )}

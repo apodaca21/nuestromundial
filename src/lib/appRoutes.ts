@@ -45,9 +45,9 @@ export const SECTION_META: Record<AppTab, SectionMeta> = {
     shareText: 'Arma tu bracket del Mundial 2026',
   },
   bingo: {
-    title: 'Bingo — Nuestro Mundial 2026',
-    description: 'Bingo del Mundial 2026 para jugar con amigos.',
-    shareText: 'Juega el bingo del Mundial 2026',
+    title: 'Quiniela de Liga — Nuestro Mundial 2026',
+    description: 'Reparte los 48 equipos del Mundial 2026 entre tus amigos con una quiniela justa.',
+    shareText: 'Arma tu quiniela y reparte equipos del Mundial 2026',
   },
   estampa: {
     title: 'Mi Estampa — Nuestro Mundial 2026',
@@ -78,8 +78,21 @@ export const SECTION_META: Record<AppTab, SectionMeta> = {
 
 export function tabFromPathname(pathname: string): AppTab {
   const normalized = pathname.replace(/\/$/, '') || '/'
+  if (normalized.startsWith('/liga/')) {
+    return isTabEnabled('bingo') ? 'bingo' : 'pronosticos'
+  }
   const tab = PATH_TO_TAB[normalized] ?? 'pronosticos'
   return isTabEnabled(tab) ? tab : 'pronosticos'
+}
+
+export function leagueShareCodeFromPathname(pathname: string): string | null {
+  const normalized = pathname.replace(/\/$/, '') || '/'
+  const match = normalized.match(/^\/liga\/([0-9]{5})$/)
+  return match ? match[1] : null
+}
+
+export function leagueShareUrl(shareCode: string): string {
+  return `${SITE_ORIGIN}/liga/${shareCode}`
 }
 
 export function pathFromTab(tab: AppTab): string {

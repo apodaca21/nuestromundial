@@ -2,7 +2,7 @@ import type { AppTab } from '../types/match'
 
 /** Activar mañana cuando estén listos */
 export const SHOW_QUINIELA_TAB = true
-export const SHOW_BINGO_TAB = false
+export const SHOW_BINGO_TAB = true
 
 export function isTabEnabled(tab: AppTab): boolean {
   if (tab === 'quiniela') return SHOW_QUINIELA_TAB

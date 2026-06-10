@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { BrandWordmark } from '../components/BrandWordmark'
 import { AccountEntryButton } from '../components/AccountEntryButton'
 import { AdminGateModal } from '../components/AdminGateModal'
@@ -14,9 +14,10 @@ const TAPS_REQUIRED = 3
 
 interface TopBarProps {
   onAdminUnlocked?: () => void
+  onOpenLeague?: (shareCode: string) => void
 }
 
-export function TopBar({ onAdminUnlocked }: TopBarProps) {
+export function TopBar({ onAdminUnlocked, onOpenLeague }: TopBarProps) {
   const { profile, user } = useAuth()
   const [showAuth, setShowAuth] = useState(false)
   const [showGate, setShowGate] = useState(false)
@@ -29,6 +30,12 @@ export function TopBar({ onAdminUnlocked }: TopBarProps) {
       clearTimeout(tapTimerRef.current)
       tapTimerRef.current = null
     }
+  }, [])
+
+  useEffect(() => {
+    const handler = () => setShowAuth(true)
+    window.addEventListener('nm:open-auth', handler)
+    return () => window.removeEventListener('nm:open-auth', handler)
   }, [])
 
   const handleLogoTap = () => {
@@ -116,7 +123,11 @@ export function TopBar({ onAdminUnlocked }: TopBarProps) {
         </div>
       </header>
 
-      <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
+      <AuthModal
+        open={showAuth}
+        onClose={() => setShowAuth(false)}
+        onOpenLeague={onOpenLeague}
+      />
 
       <AdminGateModal
         open={showGate}
